@@ -11,9 +11,10 @@ pico_sdk_init()
 add_executable(ManhattanMap
         main.cpp
 
-        Line.cpp
-        Line.h
         Light.h
+        TrainLine.h
+        util.h
+
         vmath.h
 )
 

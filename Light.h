@@ -5,20 +5,33 @@
 #ifndef MANHATTANMAP_LIGHT_H
 #define MANHATTANMAP_LIGHT_H
 
+#include "util.h"
 
 class Light {
 public:
-    Light(int index, bool isIntersection)
-        : index(index)
-        , isIntersection(isIntersection)
+    Light()
+        : pos(-1.f, -1.f)
     { }
 
-    void setIntersection(bool value = true) {
+    void setPosition(vmath_hpp::fvec2 _pos) {
+        pos = _pos;
+    }
+    vmath_hpp::fvec2 getPosition() { return pos; }
+
+    void setIsIntersection(bool value = true) {
         isIntersection = value;
     }
+    bool getIsIntersection() { return isIntersection; }
+
+    void setColor(Color _color) {
+        color = _color;
+    }
+    Color getColor() { return color; }
 private:
-    int index;
-    bool isIntersection;
+    vmath_hpp::fvec2 pos;
+
+    bool isIntersection = false;
+    Color color;
 };
 
 

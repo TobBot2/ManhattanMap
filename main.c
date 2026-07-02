@@ -1,60 +1,19 @@
-#include <array>
-#include <cstdint>
 #include <stdio.h>
-#include <tuple>
-#include <variant>
-#include <vector>
 
 #include "hardware/gpio.h"
 #include "pico/stdio.h"
-#include "vmath.h"
 #include "ws2812.pio.h"
 #include "pico/time.h"
 
-#include "Light.h"
+#include "PixelChain.h"
 #include "TrainLine.h"
 
-constexpr bool IS_RGBW = false; // RGB vs RBGW
-constexpr LightCount TOTAL_LIGHTS_COUNT = 2;
-constexpr uint16_t TRAIN_LINES_COUNT = 20;
+#define IS_RGBW false; // RGB vs RBGW
 
-constexpr int WS2812_PIN = 6;
-constexpr int BUTTON_PIN = 7;
+#define WS2812_PIN 6;
+#define BUTTON_PIN 7;
 
-constexpr bool DEBUG_LIGHT_NUMBERS = true;
-
-// types
-
-struct PIOHandle {
-    PIO pio = nullptr;
-    uint sm = -1;
-    uint offset = -1;
-};
-
-enum DisplayMode {
-    Solid,
-    TrainLineColors,
-    Gradient,
-    Pulse,
-    SimulateTrains,
-};
-
-using DisplayData = std::variant<
-    Color, // solid color
-    std::monostate, // no data
-    std::tuple<Color, Color, vmath_hpp::fvec2, vmath_hpp::fvec2>, // gradient (two colors at different positions)
-    std::tuple<Color, vmath_hpp::fvec2, float>, // pulse position, speed
-    std::tuple<uint16_t, float> // simulate trains (count + speed)
->;
-
-// FUNCTION DEFINITIONS
-
-// general util
-static Color getTrainLineColor(TrainLineName line);
-static constexpr uint32_t color_to_grb(Color c);
-static void setStripPositions(std::array<Light, TOTAL_LIGHTS_COUNT>& lights,
-                                  int startIndex, int endIndex,
-                                  vmath_hpp::fvec2 start, vmath_hpp::fvec2 end);
+#define DEBUG_LIGHT_NUMBERS true;
 
 // callbacks
 static void debug_next_light_cb(uint gpio, uint32_t events);
@@ -62,19 +21,22 @@ static void next_display_mode_cb(uint gpio, uint32_t events);
 
 // init stuff
 static void initialize();
-static void setup_lights(std::array<Light, TOTAL_LIGHTS_COUNT>& lights);
-static void setup_train_lines(std::array<TrainLine, TRAIN_LINES_COUNT>& trainLines);
+static void setup_lights();
+static void setup_train_lines();
 
 static void show();
 static void sos();
 
 // GLOBAL VARIABLES
 
-static LightIndex debugLight = 0;
+static PixelHandle debugLight = {
+    .chain = 0,
+    .index = 0,
+};
 static uint32_t debugColor = 0xff0000;
 
 static PIOHandle pioHandle;
-static uint32_t pixels[TOTAL_LIGHTS_COUNT] = { 0 };
+static PixelChain[2] pixelsChains;
 
 static DisplayMode mode = Solid;
 static DisplayData data = Color(255, 255, 255);
@@ -152,65 +114,6 @@ int main(void) {
             pixels[i] = color_to_grb(lights[i].getColor());
 
         show();
-    }
-}
-
-static Color getTrainLineColor(TrainLineName line) {
-    switch (line) {
-        case LINE_1:
-        case LINE_2:
-        case LINE_3:
-            return {0xEE, 0x35, 0x2E};
-
-        case LINE_A:
-        case LINE_C:
-        case LINE_E:
-            return {0x00, 0x39, 0xA6};
-
-        case LINE_4:
-        case LINE_5:
-        case LINE_6:
-            return {0x00, 0x93, 0x3C};
-
-        case LINE_B:
-        case LINE_D:
-        case LINE_F:
-        case LINE_M:
-            return {0xFF, 0x63, 0x19};
-
-        case LINE_Q:
-        case LINE_N:
-        case LINE_R:
-        case LINE_W:
-            return {0xFC, 0xCC, 0x0A};
-
-        case LINE_7:
-            return {0xB9, 0x33, 0xAD};
-
-        case LINE_L:
-            return {0xA7, 0xA9, 0xAC};
-
-        case LINE_S:
-            return {0x80, 0x81, 0x83};
-    }
-    std::unreachable();
-}
-
-static constexpr uint32_t color_to_grb(Color c) {
-    return ((uint32_t)c.y << 16)  // G
-         | ((uint32_t)c.x << 8)   // R
-         | ((uint32_t)c.z);       // B
-}
-
-static void setStripPositions(std::array<Light, TOTAL_LIGHTS_COUNT>& lights,
-                                  int startIndex, int endIndex,
-                                  vmath_hpp::fvec2 start, vmath_hpp::fvec2 end) {
-    for (int i = startIndex; i <= endIndex; i++) {
-        float percent = static_cast<float>(i - startIndex) / (endIndex - startIndex);
-        lights[i].setPosition({
-            start.x * (1.f - percent) + end.x * percent,
-            start.y * (1.f - percent) + end.y * percent
-        });
     }
 }
 
@@ -313,7 +216,7 @@ static void setup_train_lines(std::array<TrainLine, TRAIN_LINES_COUNT>& trainLin
 }
 
 static void show() {
-    if (pioHandle.pio == nullptr) {
+    if (!pioHandle.pio) {
         printf("PIO not initialized before writing pixels");
         sos();
     }

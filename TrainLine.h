@@ -1,13 +1,12 @@
-//
-// Created by trevo on 5/26/2026.
-//
-
 #ifndef MANHATTANMAP_TRAINLINE_H
 #define MANHATTANMAP_TRAINLINE_H
 
-#include "util.h"
+#include <stdlib.h>
 
-enum TrainLineName {
+#include "PixelChain.h"
+
+typedef enum {
+    _LINE_BEGIN,
     LINE_1,
     LINE_2,
     LINE_3,
@@ -28,28 +27,27 @@ enum TrainLineName {
     LINE_7,
     LINE_L,
     LINE_S,
-};
+    _LINE_END
+} TrainLineName;
 
-class TrainLine {
-public:
-    static std::vector<LightIndex> generateTrainLineLights(std::vector<std::pair<LightIndex, LightIndex>> pairs) {
-        std::vector<LightIndex> lights;
-        for (auto& [first, last] : pairs) {
-            for (LightIndex i = first; i <= last; i++)
-                lights.push_back(i);
-        }
-        return lights;
-    }
+typedef struct TrainLine_t {
+    TrainLineName line;
+    PixelHandle* pixel_handles;
+    unsigned int pixels_cnt;
+} TrainLine;
 
-    void setLights(std::vector<LightIndex> _lights) {
-        lights = _lights;
-    }
+typedef struct Intersection_t {
+    PixelHandle pixel;
+    TrainLine* lines;
+    unsigned int lines_cnt;
+} Intersection;
 
-    std::vector<LightIndex>& getLights() {
-        return lights;
-    }
-private:
-    std::vector<LightIndex> lights;
-};
+void tl_init(TrainLine* tl, TrainLineName line);
+
+void tl_add_pixels(TrainLine* tl, PixelHandle* pixels, unsigned count);
+
+void tl_add_segment(TrainLine* tl, uint16_t strip, PixelIndex start, PixelIndex end);
+
+Color getTrainLineColor(TrainLineName line);
 
 #endif //MANHATTANMAP_TRAINLINE_H

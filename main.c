@@ -144,42 +144,6 @@ static void initialize() {
     ws2812_program_init(pio_handle.pio, pio_handle.sm, pio_handle.offset, WS2812_PIN, 800000, IS_RGBW);
 }
 
-static void setup_lights() {
-    // TODO
-    pxg_init(&pixel_group);
-
-    // register physical pixel chains
-    int chain_pin = WS2812_PIN;
-    PixelChain* chain1 = pxg_add_chain(&pixel_group, chain_pin++);
-    PixelChain* chain2 = pxg_add_chain(&pixel_group, chain_pin++);
-    assert(chain_pin == WS2812_PIN + WS2812_COUNT); // create the correct number of chains...
-
-    // register lights (index + location)
-    setStripPositions(lights, 0, 60, {7.f, .2f}, {7.f, 24.f});
-}
-
-static void setup_map() {
-    // intersections
-
-    // train lines
-    trainLines[LINE_1].setLights(TrainLine::generateTrainLineLights({
-        {0, 66}, {84, 101}
-    }));
-
-}
-
-static void show() {
-    if (!pio_handle.pio) {
-        printf("PIO not initialized before writing pixels");
-        sos();
-    }
-
-    for (int i = 0; i < TOTAL_LIGHTS_COUNT; i++)
-        pio_sm_put_blocking(pio_handle.pio, pio_handle.sm, pixels[i] << 8u); // shift so color is in upper 24 bits
-
-    sleep_ms(10); // ensure protocol latch (minimum 50 us)
-}
-
 [[noreturn]]
 void sos() {
     while (true) {

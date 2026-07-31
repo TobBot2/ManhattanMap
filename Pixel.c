@@ -14,26 +14,16 @@ void pxg_init(PixelGroup* pxg) {
     pxg->count = 0;
 }
 
-PixelChain* pxg_add_chain(PixelGroup* pxg, uint32_t* pixels) {
+PixelChain* pxg_add_chain(PixelGroup* pxg, unsigned count) {
     // resize
     pxg->count++;
     pxg->chains = realloc(pxg->chains, pxg->count * sizeof(PixelChain));
 
     // reset new chain
-    pxg->chains[pxg->count - 1].hardware_pixels = pixels;
-    pxg->chains[pxg->count - 1].data = NULL;
-    pxg->chains[pxg->count - 1].count = 0;
+    pxg->chains[pxg->count - 1].data = malloc(count * sizeof(PixelData));
+    pxg->chains[pxg->count - 1].count = count;
 
     return &pxg->chains[pxg->count - 1];
-}
-
-void pxg_write(const PixelGroup* pxg) {
-    for (unsigned chain_idx = 0; chain_idx < pxg->count; chain_idx++) {
-        for (PixelIndex px_idx = 0; px_idx < pxg->chains[chain_idx].count; px_idx++) {
-            // TODO also apply limits? (e.g. max brightness, some colorspace weirdness?
-            pxg->chains[chain_idx].hardware_pixels[px_idx] = color_to_hardware_format(pxg->chains[chain_idx].data[px_idx].color);
-        }
-    }
 }
 
 void pxg_apply(const PixelGroup* pxg, PixelTransformFn fn, void* aux) {
@@ -87,7 +77,7 @@ void px_set_position(PixelHandle px, float x, float y) {
     px.group->chains[px.chain].data[px.index].y = y;
 }
 
-void px_set_strip_positions(PixelHandle px, unsigned count, float p1[2], float p2[2]) {
+void px_set_strip_positions(PixelHandle px, unsigned count, const float p1[2], const float p2[2]) {
     float dx = (p2[0] - p1[0]) / count;
     float dy = (p2[1] - p1[1]) / count;
     for (unsigned i = 0; i <= count; i++) { // inclusive loop [0, count]

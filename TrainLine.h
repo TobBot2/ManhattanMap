@@ -7,7 +7,6 @@
 #include "AvlTree.h"
 
 typedef enum {
-    _LINE_BEGIN,
     LINE_1,
     LINE_2,
     LINE_3,
@@ -33,7 +32,6 @@ typedef enum {
     LINE_7,
     LINE_L,
     LINE_S,
-    _LINE_END
 } TrainLineName;
 
 typedef struct TrainLine_t {

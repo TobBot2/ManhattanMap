@@ -17,7 +17,6 @@ typedef struct PixelData_t {
 
 // chain of pixels (e.g. an LED strip)
 typedef struct PixelChain_t {
-    uint32_t* hardware_pixels;
     PixelData* data;
     PixelIndex count;
 } PixelChain;
@@ -44,21 +43,20 @@ uint32_t color_to_hardware_format(Color c);
 // PIXEL GROUP
 
 void pxg_init(PixelGroup* pxg);
-PixelChain* pxg_add_chain(PixelGroup* pxg, uint32_t* pixels);
-void pxg_write(const PixelGroup* pxg); // update pixels to write their color data to hardware pixels array
+PixelChain* pxg_add_chain(PixelGroup* pxg, unsigned count);
 void pxg_apply(const PixelGroup* pxg, PixelTransformFn fn, void* aux); // apply function to each pixel in group
 
 // PIXEL DATA
 
 PixelHandle px_create_empty();
+void px_next(PixelHandle* px);
 int px_is_empty(PixelHandle px); // boolean return
 int px_compare(PixelHandle lhs, PixelHandle rhs); // cmp chain.index output -, 0, + if lhs <, =, > rhs
 PixelData* px_get_data(PixelHandle px);
 void px_set_color(PixelHandle px, Color color);
 Color px_get_color(PixelHandle px);
 void px_set_position(PixelHandle px, float x, float y);
-void px_set_strip_positions(PixelHandle px, unsigned count, float p1[2], float p2[2]); // count is inclusive
+void px_set_strip_positions(PixelHandle px, unsigned count, const float p1[2], const float p2[2]); // count is inclusive
 void px_get_position(PixelHandle px, float* out_x, float* out_y);
-void px_next(PixelHandle* px);
 
 #endif //MANHATTANMAP_UTIL_H

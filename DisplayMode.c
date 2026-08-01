@@ -51,7 +51,7 @@ Color dsp_mode_solid(PixelHandle px, void* data_mode) {
 
 Color dsp_mode_train_line_colors(PixelHandle px, void* data_mode) {
     DisplayData* data = (DisplayData*)data_mode;
-    tl_name_to_color(pxtl_search(, px));
+    // tl_name_to_color(pxtl_search(, px));
 }
 
 Color dsp_mode_wave(PixelHandle px, void* data_mode) {

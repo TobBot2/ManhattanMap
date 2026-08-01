@@ -6,7 +6,9 @@
 #include <stdlib.h>
 
 #include "hardware/pio.h"
+#include "pico/time.h"
 #include "pico/types.h"
+#include "ws2812.pio.h"
 
 typedef struct QuickpixChain_t {
     // ws2812 stuff

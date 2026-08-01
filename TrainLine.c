@@ -157,6 +157,18 @@ int intx_is_empty(const Intersection* intx) {
     return intx->lines == NULL;
 }
 
+void intx_assign_train_lines(Intersection* intx, int lines_cnt, ...) {
+    va_list args;
+
+    intx->lines_cnt = lines_cnt;
+    intx->lines = malloc(lines_cnt * sizeof(TrainLine*));
+    va_start(args, lines_cnt);
+    for (int i = 0; i < lines_cnt; i++) {
+        intx->lines[i] = va_arg(args, TrainLine*);
+    }
+    va_end(args);
+}
+
 // ******************************************************************************
 //                              INTERSECTION SET
 // ******************************************************************************

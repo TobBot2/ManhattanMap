@@ -1,101 +1,92 @@
 #include <stdio.h>
+#include <time.h>
 
+#include "ManhattanMap.h"
 #include "hardware/gpio.h"
 #include "pico/stdio.h"
-#include "ws2812.pio.h"
 #include "pico/time.h"
-#include "hardware/pio.h"
 #include "pico/types.h"
 
-#include "quickpix.h"
 #include "Pixel.h"
-#include "TrainLine.h"
-#include "DisplayMode.h"
 
 #define BUTTON_PIN 3
 
-#define DEBUG (false)
+// mode to see what physical pixel each handle corresponds to.
+// check stdout for current handle (chain + index) of lit up pixel
+#define SETUP_MODE
 
-// callbacks
-static void debug_next_light_cb(uint pin, uint32_t events);
-static void next_display_mode_cb(uint pin, uint32_t events);
-
-// init stuff
-static void initialize();
-static void setup_lights();
-static void setup_map();
-
-static void show();
+static void initialize_io();
 static void sos();
 
-// GLOBAL VARIABLES
-
-#ifdef DEBUG
+// extra debug stuff
+static void debug_next_light_cb(uint pin, uint32_t events);
 static PixelHandle debugLight = {
     .chain = 0,
     .index = 0,
 };
-#endif
-
-static QuickpixPio pio_handle;
-
-static PixelGroup pixel_group;
-static DisplayModeIndex display_mode_index;
 
 [[noreturn]]
 int main(void) {
-    initialize();
+    initialize_io();
+    map_init();
 
-#ifdef DEBUG
-    printf("debug mode enabled. initializing.\n");
-
-    gpio_init(BUTTON_PIN);
-    gpio_pull_up(BUTTON_PIN);
-    gpio_set_irq_enabled_with_callback(BUTTON_PIN, GPIO_IRQ_EDGE_FALL, true, &debug_next_light_cb);
-
-    printf("debug loop executing.\n");
-
+    const int64_t target_frame_time_us = 1000000 / 60; // 60 fps
     while (true) {
-        show();
-    }
-#endif
+#ifndef SETUP_MODE
+        absolute_time_t frame_start = get_absolute_time();
+        map_update();
+        map_display();
+        absolute_time_t frame_end = get_absolute_time();
 
-    gpio_init(BUTTON_PIN);
-    gpio_pull_up(BUTTON_PIN);
-    gpio_set_irq_enabled_with_callback(BUTTON_PIN, GPIO_IRQ_EDGE_FALL, true, &next_display_mode_cb);
-
-    setup_lights();
-    setup_map();
-
-    while (true) {
-        const DisplayData* data = dsp_get_preset(display_mode_index);
-        switch (data->mode) {
-            case DISPLAY_MODE_SOLID: {
-                // TODO pxg_apply(&pixel_group, );
-                break;
-            }
-            case DISPLAY_MODE_TRAIN_LINE_COLORS: {
-                break;
-            }
-            case DISPLAY_MODE_WAVE: {
-                break;
-            }
-            case DISPLAY_MODE_SIMULATE_TRAINS: {
-                break;
-            }
-            case DISPLAY_MODE_PULSE:
-                break;
+        int64_t frame_time_us = absolute_time_diff_us(frame_start, frame_end);
+        int64_t remaining_time_us = target_frame_time_us - frame_time_us;
+        if (remaining_time_us > 0) {
+            sleep_us((uint64_t)remaining_time_us);
         }
-
-        // update pixels to match `Light` objects
-        pxg_write(&pixel_group);
+#else
+        // callback forcefully updates map already by accessing pixel handle directly
+        map_display();
+        sleep_ms(50); // sleep a little bit just cuz (no need for super fast update in debug)
+#endif
     }
 }
 
-#ifdef DEBUG
-static void debug_next_light_cb(uint pin, uint32_t events) {
-    printf(".");
+static void initialize_io() {
+    // init debug onboard LED
+    gpio_init(PICO_DEFAULT_LED_PIN);
+    gpio_set_dir(PICO_DEFAULT_LED_PIN, GPIO_OUT);
 
+    stdio_init_all();
+
+    // execute light-flashing sequence
+    for (int i = 0; i < 10; i++) {
+        gpio_put(PICO_DEFAULT_LED_PIN, true);
+        sleep_ms(50);
+        gpio_put(PICO_DEFAULT_LED_PIN, false);
+        sleep_ms(50);
+    }
+
+    sleep_ms(2000);
+
+#ifdef SETUP_MODE
+    sleep_ms(3000); // give extra time to connect to port for debug serial output
+#endif
+
+    // GPIO
+
+#ifndef SETUP_MODE
+    gpio_init(BUTTON_PIN);
+    gpio_pull_up(BUTTON_PIN);
+    gpio_set_irq_enabled_with_callback(BUTTON_PIN, GPIO_IRQ_EDGE_FALL, true, &map_next_display_mode_cb);
+#else
+    gpio_init(BUTTON_PIN);
+    gpio_pull_up(BUTTON_PIN);
+    gpio_set_irq_enabled_with_callback(BUTTON_PIN, GPIO_IRQ_EDGE_FALL, true, &debug_next_light_cb);
+    printf("Initialized debug io.\n");
+#endif
+}
+
+static void debug_next_light_cb(uint pin, uint32_t events) {
     // ignore multi-presses
     static uint32_t last_time = 0;
     uint32_t now = to_ms_since_boot(get_absolute_time());
@@ -108,40 +99,6 @@ static void debug_next_light_cb(uint pin, uint32_t events) {
     px_set_color(debugLight, (Color){0, 0, 100});
 
     printf("\nLight chain: %hu,\tindex: %hu", debugLight.chain, debugLight.index);
-}
-#endif
-
-static void next_display_mode_cb(uint pin, uint32_t events) {
-    dsp_next_preset(&display_mode_index);
-}
-
-static void initialize() {
-    gpio_init(PICO_DEFAULT_LED_PIN);
-    gpio_set_dir(PICO_DEFAULT_LED_PIN, GPIO_OUT);
-
-    // init sequence
-    for (int i = 0; i < 10; i++) {
-        gpio_put(PICO_DEFAULT_LED_PIN, true);
-        sleep_ms(50);
-        gpio_put(PICO_DEFAULT_LED_PIN, false);
-        sleep_ms(50);
-    }
-
-    stdio_init_all();
-
-    sleep_ms(2000);
-
-#ifdef DEBUG
-    sleep_ms(3000); // give extra time to connect to port
-    printf("Initialized stdio.\n");
-#endif
-
-    if (!pio_claim_free_sm_and_add_program_for_gpio_range(&ws2812_program, &pio_handle.pio, &pio_handle.sm, &pio_handle.offset, WS2812_PIN, WS2812_COUNT, true)) {
-        printf("PIO claim resources failed.\n");
-        sos();
-    }
-
-    ws2812_program_init(pio_handle.pio, pio_handle.sm, pio_handle.offset, WS2812_PIN, 800000, IS_RGBW);
 }
 
 [[noreturn]]

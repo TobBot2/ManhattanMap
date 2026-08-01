@@ -1,6 +1,7 @@
 #ifndef MANHATTANMAP_TRAINLINE_H
 #define MANHATTANMAP_TRAINLINE_H
 
+#include <stdarg.h>
 #include <stdlib.h>
 
 #include "Pixel.h"
@@ -50,7 +51,7 @@ typedef struct PixelTrainLineNode_t {
 
 typedef struct Intersection_t {
     PixelHandle pixel;
-    TrainLine* lines;
+    TrainLine** lines;
     unsigned lines_cnt;
 } Intersection;
 
@@ -94,6 +95,7 @@ static int pxtl_compare(struct avl_node* lhs, struct avl_node* rhs, void* aux);
 
 Intersection intx_create_empty();
 int intx_is_empty(const Intersection* intx); // boolean return
+void intx_assign_train_lines(Intersection* intx, int lines_cnt, ...);
 
 // INTERSECTION SET
 

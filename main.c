@@ -16,7 +16,6 @@
 #define SETUP_MODE
 
 static void initialize_io();
-static void sos();
 
 // extra debug stuff
 static void debug_next_light_cb(uint pin, uint32_t events);
@@ -30,9 +29,19 @@ int main(void) {
     initialize_io();
     map_init();
 
+#ifdef SETUP_MODE
+    debugLight.group = map_get_pxg();
+#else
     const int64_t target_frame_time_us = 1000000 / 60; // 60 fps
+#endif
+
     while (true) {
-#ifndef SETUP_MODE
+#ifdef SETUP_MODE
+        // callback forcefully updates map already by accessing pixel handle directly
+        map_display();
+        sleep_ms(50); // sleep a little bit just cuz (no need for super fast update in debug)
+#else
+        // ensure constant framerate
         absolute_time_t frame_start = get_absolute_time();
         map_update();
         map_display();
@@ -43,10 +52,6 @@ int main(void) {
         if (remaining_time_us > 0) {
             sleep_us((uint64_t)remaining_time_us);
         }
-#else
-        // callback forcefully updates map already by accessing pixel handle directly
-        map_display();
-        sleep_ms(50); // sleep a little bit just cuz (no need for super fast update in debug)
 #endif
     }
 }
@@ -66,23 +71,23 @@ static void initialize_io() {
         sleep_ms(50);
     }
 
-    sleep_ms(2000);
-
 #ifdef SETUP_MODE
     sleep_ms(3000); // give extra time to connect to port for debug serial output
+#else
+    sleep_ms(1000);
 #endif
 
     // GPIO
 
-#ifndef SETUP_MODE
-    gpio_init(BUTTON_PIN);
-    gpio_pull_up(BUTTON_PIN);
-    gpio_set_irq_enabled_with_callback(BUTTON_PIN, GPIO_IRQ_EDGE_FALL, true, &map_next_display_mode_cb);
-#else
+#ifdef SETUP_MODE
     gpio_init(BUTTON_PIN);
     gpio_pull_up(BUTTON_PIN);
     gpio_set_irq_enabled_with_callback(BUTTON_PIN, GPIO_IRQ_EDGE_FALL, true, &debug_next_light_cb);
     printf("Initialized debug io.\n");
+#else
+    gpio_init(BUTTON_PIN);
+    gpio_pull_up(BUTTON_PIN);
+    gpio_set_irq_enabled_with_callback(BUTTON_PIN, GPIO_IRQ_EDGE_FALL, true, &map_next_display_mode_cb);
 #endif
 }
 
@@ -99,56 +104,4 @@ static void debug_next_light_cb(uint pin, uint32_t events) {
     px_set_color(debugLight, (Color){0, 0, 100});
 
     printf("\nLight chain: %hu,\tindex: %hu", debugLight.chain, debugLight.index);
-}
-
-[[noreturn]]
-void sos() {
-    while (true) {
-        const int c = 100;
-        printf("sos\n");
-        gpio_put(PICO_DEFAULT_LED_PIN, true);
-        sleep_ms(c);
-        gpio_put(PICO_DEFAULT_LED_PIN, false);
-        sleep_ms(c);
-        gpio_put(PICO_DEFAULT_LED_PIN, true);
-        sleep_ms(c);
-        gpio_put(PICO_DEFAULT_LED_PIN, false);
-        sleep_ms(c);
-        gpio_put(PICO_DEFAULT_LED_PIN, true);
-        sleep_ms(c);
-        gpio_put(PICO_DEFAULT_LED_PIN, false);
-        sleep_ms(c);
-
-        sleep_ms(c*2);
-
-        gpio_put(PICO_DEFAULT_LED_PIN, true);
-        sleep_ms(c*2);
-        gpio_put(PICO_DEFAULT_LED_PIN, false);
-        sleep_ms(c*2);
-        gpio_put(PICO_DEFAULT_LED_PIN, true);
-        sleep_ms(c*2);
-        gpio_put(PICO_DEFAULT_LED_PIN, false);
-        sleep_ms(c*2);
-        gpio_put(PICO_DEFAULT_LED_PIN, true);
-        sleep_ms(c*2);
-        gpio_put(PICO_DEFAULT_LED_PIN, false);
-        sleep_ms(c*2);
-
-        sleep_ms(c*2);
-
-        gpio_put(PICO_DEFAULT_LED_PIN, true);
-        sleep_ms(c);
-        gpio_put(PICO_DEFAULT_LED_PIN, false);
-        sleep_ms(c);
-        gpio_put(PICO_DEFAULT_LED_PIN, true);
-        sleep_ms(c);
-        gpio_put(PICO_DEFAULT_LED_PIN, false);
-        sleep_ms(c);
-        gpio_put(PICO_DEFAULT_LED_PIN, true);
-        sleep_ms(c);
-        gpio_put(PICO_DEFAULT_LED_PIN, false);
-        sleep_ms(c);
-
-        sleep_ms(c*4);
-    }
 }

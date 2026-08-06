@@ -7,7 +7,7 @@
 #include "TrainLine.h"
 
 // quick c-style vector2 float cuz I'm lazy
-#define cvec2f(a, b) (const float[2]){ a, b }
+#define cvec2f(x, y) (const float[2]){ x, y }
 
 Quickpix quickpix;
 PixelGroup pixel_group;
@@ -15,11 +15,13 @@ PixelTrainLineMap pixel_train_line_map;
 DisplayModeIndex display_mode_index;
 IntersectionSet intersection_set;
 
-static void register_pixels();
-static void register_trainlines();
+void register_pixels();
+void register_trainlines();
 
+// TODO: should pass in config struct...
 void map_init() {
     quickpix = quickpix_create();
+    pxg_init(&pixel_group); // TODO: standardize convention (= create() or init()?) I think I prefer init().
 
     quickpix_add_chain(&quickpix, 6, 542);
     quickpix_add_chain(&quickpix, 7, 662);
@@ -39,6 +41,7 @@ void map_update() {
             break;
         }
         case DISPLAY_MODE_TRAIN_LINE_COLORS: {
+            pxg_apply(&pixel_group, dsp_mode_train_line_colors, (void*)data);
             break;
         }
         case DISPLAY_MODE_WAVE: {
@@ -68,9 +71,13 @@ void map_next_display_mode_cb(uint pin, uint32_t events) {
     dsp_next_preset(&display_mode_index);
 }
 
+PixelGroup* map_get_pxg() {
+    return &pixel_group;
+}
+
 // HELPER FUNCTIONS
 
-static void register_pixels() {
+void register_pixels() {
     pxg_init(&pixel_group);
 
     PixelHandle px = (PixelHandle) {
@@ -88,7 +95,7 @@ static void register_pixels() {
     // TODO... etc. etc.
 }
 
-static void register_trainlines() {
+void register_trainlines() {
     PixelHandle px1 = (PixelHandle) {
         .index = 0,
         .chain = 0,

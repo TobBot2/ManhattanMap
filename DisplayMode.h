@@ -2,6 +2,7 @@
 #define MANHATTANMAP_DISPLAYMODE_H
 
 #include "Pixel.h"
+#include "TrainLine.h"
 
 typedef unsigned DisplayModeIndex;
 
@@ -16,27 +17,30 @@ typedef enum DisplayMode_t {
 typedef struct DisplayData_t {
     DisplayMode mode;
 
-    // <no data>                              // DISPLAY_MODE_TRAIN_LINE_COLORS
-
     union {
         Color color;                        // DISPLAY_MODE_SOLID
+
+        PixelTrainLineMap* pxtl;            // DISPLAY_MODE_TRAIN_LINE_COLORS
 
         struct {                            // DISPLAY_MODE_WAVE
             Color color1;
             Color color2;
             float dir_x, dir_y;
             float speed; // in/s
+            uint64_t elapsed_ms;
         } wave;
 
         struct {                            // DISPLAY_MODE_PULSE
             Color color;
             float x, y;
             float speed; // in/s
+            uint64_t elapsed_ms;
         } pulse;
 
         struct {                            // DISPLAY_MODE_SIMULATE_TRAINS
             int count;
-            float speed;
+            float speed; // in/s
+            uint64_t elapsed_ms;
         } simulate;
     };
 } DisplayData;

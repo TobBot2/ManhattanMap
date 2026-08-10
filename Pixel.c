@@ -2,7 +2,7 @@
 
 uint32_t color_to_hardware_format(Color c) {
     // store as grb (Color is stored as grb in memory already)
-    return (*(uint32_t*)&c) >> 8; // remove trailing garbage data (Color is 24 bits)
+    return (*(uint32_t*)&c); // remove trailing garbage data (Color is 24 bits)
 }
 
 // ******************************************************************************

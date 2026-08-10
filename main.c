@@ -30,6 +30,7 @@ int main(void) {
     map_init();
 
 #ifdef SETUP_MODE
+    map_clear();
     debugLight.group = map_get_pxg();
 #else
     const int64_t target_frame_time_us = 1000000 / 60; // 60 fps
@@ -99,9 +100,9 @@ static void debug_next_light_cb(uint pin, uint32_t events) {
     last_time = now;
 
     // reset prev pixel + set next pixel
-    px_set_color(debugLight, (Color){0, 0, 0});
+    px_set_color(debugLight, (Color){0, 0, 0, 0});
     px_next(&debugLight);
-    px_set_color(debugLight, (Color){0, 0, 100});
+    px_set_color(debugLight, (Color){0, 0, 0, 0});
 
     printf("\nLight chain: %hu,\tindex: %hu", debugLight.chain, debugLight.index);
 }

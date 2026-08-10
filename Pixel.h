@@ -7,7 +7,7 @@
 typedef uint16_t PixelIndex; // limit is small due to 5m limit of lights anyway
 
 typedef struct Color_t {
-    uint8_t g, r, b; // stored grb order for hardware reasons
+    uint8_t x, g, r, b; // stored grb order for hardware reasons
 } Color;
 
 typedef struct PixelData_t {

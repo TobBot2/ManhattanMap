@@ -23,14 +23,14 @@ void map_init() {
     quickpix = quickpix_create();
     pxg_init(&pixel_group); // TODO: standardize convention (= create() or init()?) I think I prefer init().
 
-    quickpix_add_chain(&quickpix, 6, 542);
-    quickpix_add_chain(&quickpix, 7, 662);
+    quickpix_add_chain(&quickpix, 6, 8);
+    quickpix_add_chain(&quickpix, 7, 34);
     for (unsigned i = 0; i < quickpix.count; i++) {
         pxg_add_chain(&pixel_group, quickpix.chains[i].count);
     }
 
-    register_pixels();
-    register_trainlines();
+    // register_pixels();
+    // register_trainlines();
 }
 
 void map_update() {
@@ -60,7 +60,21 @@ void map_display() {
     for (unsigned chain_idx = 0; chain_idx < pixel_group.count; chain_idx++) {
         for (PixelIndex px_idx = 0; px_idx < pixel_group.chains[chain_idx].count; px_idx++) {
             // TODO also apply limits? (e.g. max brightness, some colorspace weirdness?)
-            quickpix.chains[chain_idx].pixels[px_idx] = color_to_hardware_format(pixel_group.chains[chain_idx].data[px_idx].color);
+            Color c = pixel_group.chains[chain_idx].data[px_idx].color;
+            c.r /= 2;
+            c.g /= 2;
+            c.b /= 2;
+            quickpix.chains[chain_idx].pixels[px_idx] = color_to_hardware_format(c);
+        }
+    }
+
+    quickpix_show(&quickpix);
+}
+
+void map_clear() {
+    for (unsigned chain_idx = 0; chain_idx < pixel_group.count; chain_idx++) {
+        for (PixelIndex px_idx = 0; px_idx < pixel_group.chains[chain_idx].count; px_idx++) {
+            quickpix.chains[chain_idx].pixels[px_idx] = (uint32_t) 0;
         }
     }
 

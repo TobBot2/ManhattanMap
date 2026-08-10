@@ -10,6 +10,7 @@
 void map_init();
 void map_update();
 void map_display();
+void map_clear();
 
 void map_next_display_mode_cb(uint pin, uint32_t events);
 

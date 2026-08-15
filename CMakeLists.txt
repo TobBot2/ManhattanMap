@@ -22,6 +22,7 @@ add_executable(ManhattanMap
         ManhattanMap.c
         quickpix.h
         ManhattanMap.c
+        ManhattanLayout.h
 )
 
 # generate .pio.h file

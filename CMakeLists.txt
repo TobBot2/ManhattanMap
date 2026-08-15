@@ -3,19 +3,25 @@ cmake_minimum_required(VERSION 4.1)
 include($ENV{PICO_SDK_PATH}/external/pico_sdk_import.cmake)
 
 project(ManhattanMap)
-set(CMAKE_C_STANDARD 23)
-set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_C_STANDARD 11)
+set(CMAKE_CXX_STANDARD 17)
 
 pico_sdk_init()
 
 add_executable(ManhattanMap
-        main.cpp
-
-        Light.h
+        main.c
+        Pixel.h
+        Pixel.c
         TrainLine.h
-        util.h
-
-        vmath.h
+        TrainLine.c
+        DisplayMode.h
+        DisplayMode.c
+        AvlTree.h
+        AvlTree.c
+        ManhattanMap.h
+        ManhattanMap.c
+        quickpix.h
+        ManhattanMap.c
 )
 
 # generate .pio.h file

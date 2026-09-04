@@ -61,6 +61,13 @@ int px_compare(PixelHandle lhs, PixelHandle rhs) {
     }
 }
 
+int px_is_valid(PixelHandle px) {
+    if (px_is_empty(px)) return 0;
+    if (px.chain >= px.group->count) return 0;
+    if (px.index >= px.group->chains[px.chain].count) return 0;
+    return 1;
+}
+
 PixelData* px_get_data(PixelHandle px) {
     return px.group->chains[px.chain].data;
 }
@@ -83,6 +90,17 @@ void px_set_strip_positions(PixelHandle px, unsigned count, const float p1[2], c
     for (unsigned i = 0; i <= count; i++) { // inclusive loop [0, count]
         px.group->chains[px.chain].data[px.index].x = p1[0] + dx * i;
         px.group->chains[px.chain].data[px.index].y = p1[1] + dy * i;
+
+        px.index++;
+
+        // wrap px index/chain
+        if (px.index >= px.group->chains[px.chain].count) {
+            px.index = 0;
+            px.chain++;
+            if (px.chain >= px.group->count) {
+                px.chain = 0;
+            }
+        }
     }
 }
 void px_get_position(PixelHandle px, float* out_x, float* out_y) {

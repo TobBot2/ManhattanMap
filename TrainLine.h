@@ -79,9 +79,9 @@ PixelHandle tl_get_neighbor(const TrainLine* tl, unsigned* pixel_idx, int forwar
 // get neighboring pixel in opposite direction of previous (neighbor in continuing direction)
 PixelHandle tl_get_next_neighbor(const TrainLine* tl, unsigned* pixel_idx, unsigned* prev_idx);
 // get neighboring pixel on any train line
-PixelHandle tl_get_random_neighbor(PixelHandle pixel);
+PixelHandle tl_get_random_neighbor(PixelHandle pixel, IntersectionSet* intx_set);
 // get neighboring pixel on any train line in any direction except previous (don't back-track)
-PixelHandle tl_get_random_next_neighbor(PixelHandle pixel, PixelHandle prev);
+PixelHandle tl_get_random_next_neighbor(PixelHandle pixel, PixelHandle prev, IntersectionSet* intx_set);
 
 // PIXEL TRAIN LINE MAP
 

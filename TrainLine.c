@@ -1,5 +1,7 @@
 #include "TrainLine.h"
 
+#include "ManhattanMap.h"
+
 Color tl_name_to_color(TrainLineName line) {
     switch (line) {
         case LINE_1:
@@ -57,7 +59,7 @@ void tl_add_pixels(TrainLine* tl, const PixelHandle* pixels, unsigned count, Pix
     PixelIndex original_cnt = tl->pixels_cnt;
 
     tl->pixels_cnt += count;
-    tl->pixels = realloc(tl->pixels, tl->pixels_cnt);
+    tl->pixels = realloc(tl->pixels, tl->pixels_cnt * sizeof(PixelHandle));
     for (int i = 0; i < count; i++) {
         tl->pixels[original_cnt + i] = pixels[i];
         pxtl_insert(pxtl, pixels[i], tl);
@@ -75,7 +77,7 @@ void tl_add_segment(TrainLine* tl, PixelHandle start, PixelHandle end, PixelTrai
     // reserve space
     unsigned extra_space = end.index - start.index + 1; // + 1 for inclusive range [start, end]
     tl->pixels_cnt += extra_space;
-    tl->pixels = realloc(tl->pixels, tl->pixels_cnt);
+    tl->pixels = realloc(tl->pixels, tl->pixels_cnt * sizeof(PixelHandle));
 
     // populate space
     for (PixelIndex i = 0; i < extra_space; i++) {
@@ -101,12 +103,34 @@ PixelHandle tl_get_next_neighbor(const TrainLine* tl, unsigned* pixel_idx, unsig
     return tl_get_neighbor(tl, pixel_idx, forward);
 }
 
-PixelHandle tl_get_random_neighbor(PixelHandle pixel) {
-    // TODO
+PixelHandle tl_get_random_neighbor(PixelHandle pixel, IntersectionSet* intx_set) {
+    Intersection intx = intx_set_search(intx_set, pixel);
+
+    for (;;) {
+        int rand_line = rand() % intx.lines_cnt;
+        // find pixel in random train line it is a part of
+        for (unsigned px = 0; px < intx.lines[rand_line]->pixels_cnt; px++) {
+            if (px_compare(intx.lines[rand_line]->pixels[px], pixel) == 0) {
+                // go in random direction along chosen train line
+                int is_forward = rand() % 2;
+                int step_dir = is_forward ? 1 : -1;
+                PixelHandle candidate = intx.lines[rand_line]->pixels[px + step_dir];
+
+                // if it's valid, return it
+                if (px_is_valid(candidate)) {
+                    return candidate;
+                }
+
+                // invalid -> keep searching
+            }
+        }
+    }
 }
 
-PixelHandle tl_get_random_next_neighbor(PixelHandle pixel, PixelHandle prev) {
-    // TODO
+PixelHandle tl_get_random_next_neighbor(PixelHandle pixel, PixelHandle prev, IntersectionSet* intx_set) {
+    PixelHandle neighbor;
+    while (px_compare(neighbor = tl_get_random_neighbor(pixel, intx_set), prev) != 0) { }
+    return neighbor;
 }
 
 // ******************************************************************************
@@ -118,10 +142,10 @@ void pxtl_init(PixelTrainLineMap* pxtl) {
 }
 
 void pxtl_insert(PixelTrainLineMap* pxtl, PixelHandle px, TrainLine* tl) {
-    PixelTrainLineNode* node = malloc(sizeof(PixelTrainLineNode));
-    node->key = px;
-    node->value = tl;
-    avl_insert(pxtl, &node->avl, pxtl_compare);
+    PixelTrainLineNode node;
+    node.key = px;
+    node.value = tl;
+    avl_insert(pxtl, &node.avl, pxtl_compare);
 }
 
 TrainLine* pxtl_search(PixelTrainLineMap* pxtl, PixelHandle px) {
@@ -178,9 +202,9 @@ void intx_set_init(IntersectionSet* intx_set) {
 }
 
 void intx_set_insert(IntersectionSet* intx_set, Intersection intx) {
-    IntersectionNode* node = malloc(sizeof(IntersectionNode));
-    node->key = intx;
-    avl_insert(intx_set, &node->avl, intx_set_compare);
+    IntersectionNode node;
+    node.key = intx;
+    avl_insert(intx_set, &node.avl, intx_set_compare);
 }
 
 Intersection intx_set_search(IntersectionSet* intx_set, PixelHandle px) {

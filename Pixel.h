@@ -52,6 +52,7 @@ PixelHandle px_create_empty();
 void px_next(PixelHandle* px);
 int px_is_empty(PixelHandle px); // boolean return
 int px_compare(PixelHandle lhs, PixelHandle rhs); // cmp chain.index output -, 0, + if lhs <, =, > rhs
+int px_is_valid(PixelHandle px); // boolean return
 PixelData* px_get_data(PixelHandle px);
 void px_set_color(PixelHandle px, Color color);
 Color px_get_color(PixelHandle px);

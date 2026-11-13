@@ -5,6 +5,25 @@ uint32_t color_to_hardware_format(Color c) {
     return (*(uint32_t*)&c); // remove trailing garbage data (Color is 24 bits)
 }
 
+Color color_mix(Color c1, Color c2, float mix) {
+    // mix colors
+    Color c1_contribution = (Color) {
+        c1.r * (1.f - mix),
+        c1.g * (1.f - mix),
+        c1.b * (1.f - mix)
+    };
+    Color c2_contribution = (Color) {
+        c2.r * mix,
+        c2.g * mix,
+        c2.b * mix
+    };
+    return (Color) {
+        c1_contribution.r + c2_contribution.r,
+        c1_contribution.g + c2_contribution.g,
+        c1_contribution.b + c2_contribution.b
+    };
+}
+
 // ******************************************************************************
 //                                 PIXEL GROUP
 // ******************************************************************************
@@ -15,15 +34,16 @@ void pxg_init(PixelGroup* pxg) {
 }
 
 PixelChain* pxg_add_chain(PixelGroup* pxg, unsigned count) {
-    // resize
+    // allocate new chain
     pxg->count++;
     pxg->chains = realloc(pxg->chains, pxg->count * sizeof(PixelChain));
+    PixelChain* chain = &pxg->chains[pxg->count - 1];
 
-    // reset new chain
-    pxg->chains[pxg->count - 1].data = malloc(count * sizeof(PixelData));
-    pxg->chains[pxg->count - 1].count = count;
+    // populate new chain
+    chain->data = malloc(count * sizeof(PixelData));
+    chain->count = count;
 
-    return &pxg->chains[pxg->count - 1];
+    return chain;
 }
 
 void pxg_apply(const PixelGroup* pxg, PixelTransformFn fn, void* aux) {

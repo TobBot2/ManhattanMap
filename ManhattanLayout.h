@@ -1,3 +1,6 @@
+// This file isn't really a header- moreso a config file in C-function form.
+
+
 #ifndef MANHATTANMAP_MANHATTANLAYOUT_H
 #define MANHATTANMAP_MANHATTANLAYOUT_H
 
@@ -7,7 +10,7 @@
 // quick c-style vector2 float cuz I'm lazy
 #define CVEC2F(x, y) (const float[2]){ x, y }
 
-inline void manhattan_register_pixels(PixelGroup* pixel_group) {
+void manhattan_register_pixels(PixelGroup* pixel_group) {
     pxg_init(pixel_group);
 
     PixelHandle px = (PixelHandle) {
@@ -19,13 +22,13 @@ inline void manhattan_register_pixels(PixelGroup* pixel_group) {
     px.chain = 0;
 
     px.index = 0;
-    px_set_strip_positions(px, 10, CVEC2F(.1f, .1f), CVEC2F(.2f, .2f));
+    // px_set_strip_positions(px, 10, CVEC2F(.1f, .1f), CVEC2F(.2f, .2f));
     px.index = 11;
-    px_set_strip_positions(px, 20, CVEC2F(.1f, .1f), CVEC2F(.2f, .2f));
+    // px_set_strip_positions(px, 20, CVEC2F(.1f, .1f), CVEC2F(.2f, .2f));
     // TODO... etc. etc.
 }
 
-inline void manhattan_register_trainlines(PixelGroup* pixel_group, PixelTrainLineMap* pixel_train_line_map, IntersectionSet* intersection_set) {
+void manhattan_register_trainlines(PixelGroup* pixel_group, PixelTrainLineMap* pixel_train_line_map, IntersectionSet* intersection_set) {
     PixelHandle px1 = (PixelHandle) {
         .index = 0,
         .chain = 0,
@@ -36,9 +39,9 @@ inline void manhattan_register_trainlines(PixelGroup* pixel_group, PixelTrainLin
     TrainLine tl_1;
     tl_init(&tl_1, LINE_1);
     px1.index = 0; px2.index = 10;
-    tl_add_segment(&tl_1, px1, px2, pixel_train_line_map);
+    // tl_add_segment(&tl_1, px1, px2, pixel_train_line_map);
     px1.index = 11; px2.index = 20;
-    tl_add_segment(&tl_1, px1, px2, pixel_train_line_map);
+    // tl_add_segment(&tl_1, px1, px2, pixel_train_line_map);
     // TODO... etc. etc.
 
     TrainLine tl_2;
@@ -88,8 +91,8 @@ inline void manhattan_register_trainlines(PixelGroup* pixel_group, PixelTrainLin
     // TODO intersections
     Intersection intx = intx_create_empty();
     intx.pixel.index = 20;
-    intx_assign_train_lines(&intx, 3, tl_1, tl_2, tl_3);
-    intx_set_insert(intersection_set, intx);
+    // intx_assign_train_lines(&intx, 3, tl_1, tl_2, tl_3);
+    // intx_set_insert(intersection_set, intx);
 }
 
 

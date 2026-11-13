@@ -18,10 +18,11 @@
 static void initialize_io();
 
 // extra debug stuff
+static volatile bool button_pressed = false;
 static void debug_next_light_cb(uint pin, uint32_t events);
 static PixelHandle debugLight = {
     .chain = 0,
-    .index = 0,
+    .index = 540,
 };
 
 [[noreturn]]
@@ -36,10 +37,20 @@ int main(void) {
     const int64_t target_frame_time_us = 1000000 / 60; // 60 fps
 #endif
 
+    printf("Starting main loop...");
     while (true) {
 #ifdef SETUP_MODE
         // callback forcefully updates map already by accessing pixel handle directly
-        map_display();
+        if (button_pressed) {
+            button_pressed = false;
+            px_set_color(debugLight, (Color){0, 0, 0, 0});
+            for (int i = 0; i < 1; i++) px_next(&debugLight);
+            px_set_color(debugLight, (Color){0, 0, 255, 0});
+            printf("chain: %hu/%hu, index: %hu/%hu\n",
+                   debugLight.chain, debugLight.group->count,
+                   debugLight.index, debugLight.group->chains[debugLight.chain].count);
+            map_display();
+        }
         sleep_ms(50); // sleep a little bit just cuz (no need for super fast update in debug)
 #else
         // ensure constant framerate
@@ -93,16 +104,9 @@ static void initialize_io() {
 }
 
 static void debug_next_light_cb(uint pin, uint32_t events) {
-    // ignore multi-presses
     static uint32_t last_time = 0;
     uint32_t now = to_ms_since_boot(get_absolute_time());
     if (now - last_time < 200) return;
     last_time = now;
-
-    // reset prev pixel + set next pixel
-    px_set_color(debugLight, (Color){0, 0, 0, 0});
-    px_next(&debugLight);
-    px_set_color(debugLight, (Color){0, 0, 0, 0});
-
-    printf("\nLight chain: %hu,\tindex: %hu", debugLight.chain, debugLight.index);
+    button_pressed = true;
 }

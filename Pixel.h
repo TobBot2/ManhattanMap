@@ -39,6 +39,7 @@ typedef Color (*PixelTransformFn)(PixelHandle, void*);
 // COLOR
 
 uint32_t color_to_hardware_format(Color c);
+Color color_mix(Color c1, Color c2, float mix); // mix [0, 1) = % contribution of c2 (remaining is c1)
 
 // PIXEL GROUP
 

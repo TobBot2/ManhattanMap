@@ -34,19 +34,19 @@ static Quickpix quickpix_create() {
 }
 
 static bool quickpix_add_chain(Quickpix* quickpix, uint pin, uint count) {
-    QuickpixChain chain;
-    chain.count = count;
-    chain.pixels = malloc(count * sizeof(uint32_t));
-    if (!pio_claim_free_sm_and_add_program_for_gpio_range(
-            &ws2812_program, &chain.pio, &chain.sm, &chain.offset, pin, 1, true)) {
-        return false;
-    }
-    ws2812_program_init(chain.pio, chain.sm, chain.offset, pin, 800000, false);
-
-    // add to quickpix arr
+    // allocate new chain
     quickpix->count++;
     quickpix->chains = realloc(quickpix->chains, quickpix->count * sizeof(QuickpixChain));
-    quickpix->chains[quickpix->count - 1] = chain;
+    QuickpixChain* chain = &quickpix->chains[quickpix->count - 1];
+
+    // populate new chain data
+    chain->count = count;
+    chain->pixels = calloc(count, sizeof(uint32_t));
+    if (!pio_claim_free_sm_and_add_program_for_gpio_range(
+            &ws2812_program, &chain->pio, &chain->sm, &chain->offset, pin, 1, true)) {
+        return false;
+    }
+    ws2812_program_init(chain->pio, chain->sm, chain->offset, pin, 800000, false);
 
     return true;
 }

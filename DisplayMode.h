@@ -4,6 +4,13 @@
 #include "Pixel.h"
 #include "TrainLine.h"
 
+typedef struct SimulatedTrain_t {
+    PixelHandle pos;
+    PixelHandle prev;
+    float interp; // interpolation between prev and curr position.
+    Color color;
+} SimulatedTrain;
+
 typedef unsigned DisplayModeIndex;
 
 typedef enum DisplayMode_t {
@@ -27,20 +34,20 @@ typedef struct DisplayData_t {
             Color color2;
             float dir_x, dir_y;
             float speed; // in/s
-            uint64_t elapsed_ms;
+            volatile uint64_t elapsed_ms;
         } wave;
 
         struct {                            // DISPLAY_MODE_PULSE
             Color color;
             float x, y;
             float speed; // in/s
-            uint64_t elapsed_ms;
+            volatile uint64_t elapsed_ms;
         } pulse;
 
         struct {                            // DISPLAY_MODE_SIMULATE_TRAINS
             int count;
-            float speed; // in/s
-            uint64_t elapsed_ms;
+            float speed; // in/tick
+            volatile SimulatedTrain* trains;
         } simulate;
     };
 } DisplayData;
@@ -57,5 +64,7 @@ Color dsp_mode_train_line_colors(PixelHandle px, void* data_mode);
 Color dsp_mode_wave(PixelHandle px, void* data_mode);
 Color dsp_mode_pulse(PixelHandle px, void* data_mode);
 Color dsp_mode_simulate_trains(PixelHandle px, void* data_mode);
+void dsp_mode_simulate_trains_init(void* data_mode);
+void dsp_mode_simulate_trains_tick(void* data_mode);
 
 #endif //MANHATTANMAP_DISPLAYMODE_H

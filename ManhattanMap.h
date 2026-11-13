@@ -5,6 +5,8 @@
 
 #include "Pixel.h"
 
+static PixelGroup pixel_group;
+
 // MAP LOGIC
 
 void map_init();

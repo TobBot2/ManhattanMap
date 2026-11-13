@@ -8,7 +8,6 @@
 #include "ManhattanLayout.h"
 
 Quickpix quickpix;
-PixelGroup pixel_group;
 PixelTrainLineMap pixel_train_line_map;
 DisplayModeIndex display_mode_index;
 IntersectionSet intersection_set;
@@ -20,8 +19,9 @@ void map_init() {
     quickpix = quickpix_create();
     pxg_init(&pixel_group); // TODO: standardize convention (= create() or init()?) I think I prefer init().
 
-    quickpix_add_chain(&quickpix, 6, 8);
-    quickpix_add_chain(&quickpix, 7, 34);
+    printf("adding chains...\n");
+    quickpix_add_chain(&quickpix, 6, 618); // TODO: define in ManhattanLayout.h file
+    quickpix_add_chain(&quickpix, 7, 548);
     for (unsigned i = 0; i < quickpix.count; i++) {
         pxg_add_chain(&pixel_group, quickpix.chains[i].count);
     }
@@ -89,11 +89,11 @@ PixelGroup* map_get_pxg() {
 
 void register_map() {
     // init globals
-    pxg_init(&pixel_group);
+    // pxg_init(&pixel_group); already registered
     pxtl_init(&pixel_train_line_map);
     intx_set_init(&intersection_set);
 
     // call map-specific registry setup
-    manhattan_register_pixels(&pixel_group);
-    manhattan_register_trainlines(&pixel_group, &pixel_train_line_map, &intersection_set);
+    // manhattan_register_pixels(&pixel_group);
+    // manhattan_register_trainlines(&pixel_group, &pixel_train_line_map, &intersection_set);
 }

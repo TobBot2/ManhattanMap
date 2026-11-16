@@ -50,7 +50,7 @@ void avl_set_aux(struct avl_tree *tree, void *aux);
 struct avl_node* avl_insert(struct avl_tree *tree,
                             struct avl_node *node,
                             avl_cmp_func *func);
-struct avl_node* avl_search(struct avl_tree *tree,
+struct avl_node* avl_search(const struct avl_tree *tree,
                             struct avl_node *node,
                             avl_cmp_func *func);
 struct avl_node* avl_search_greater(struct avl_tree *tree,

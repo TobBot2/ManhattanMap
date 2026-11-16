@@ -7,29 +7,43 @@
 #include "TrainLine.h"
 #include "ManhattanLayout.h"
 
-Quickpix quickpix;
-PixelTrainLineMap pixel_train_line_map;
-DisplayModeIndex display_mode_index;
-IntersectionSet intersection_set;
+static Quickpix quickpix;
+
+static PixelGroup pixel_group;
+
+static TrainLine* train_lines;
+static unsigned train_lines_cnt;
+
+static PixelTrainLineMap pixel_train_line_map;
+static IntersectionSet intersection_set;
+
+static DisplayModeIndex display_mode_index;
+
 
 void register_map();
 
 // TODO: should pass in config struct...
 void map_init() {
+    // quickpix
     quickpix = quickpix_create();
-    pxg_init(&pixel_group); // TODO: standardize convention (= create() or init()?) I think I prefer init().
-
-    printf("adding chains...\n");
-    quickpix_add_chain(&quickpix, 6, 618); // TODO: define in ManhattanLayout.h file
+    quickpix_add_chain(&quickpix, 6, 618); // TODO: define in ManhattanLayout.h file?
     quickpix_add_chain(&quickpix, 7, 548);
+
+
+    // pxg
+    pxg_init(&pixel_group); // TODO: standardize convention (= create() or init()?) I think I prefer init().
     for (unsigned i = 0; i < quickpix.count; i++) {
         pxg_add_chain(&pixel_group, quickpix.chains[i].count);
     }
 
+    // register map details (train lines, intxs, etc.)
     register_map();
+
+    // initialize display modes
+
 }
 
-void map_update() {
+void map_update(int64_t frame_time_us) {
     const DisplayData* data = dsp_get_preset(display_mode_index);
     switch (data->mode) {
         case DISPLAY_MODE_SOLID: {
@@ -41,13 +55,20 @@ void map_update() {
             break;
         }
         case DISPLAY_MODE_WAVE: {
+            pxg_apply(&pixel_group, dsp_mode_wave, (void*)data);
+            dsp_mode_wave_tick((void*)data, frame_time_us);
             break;
         }
         case DISPLAY_MODE_SIMULATE_TRAINS: {
+            pxg_apply(&pixel_group, dsp_mode_simulate_trains, (void*)data);
+            dsp_mode_simulate_trains_tick((void*)data, frame_time_us);
             break;
         }
-        case DISPLAY_MODE_PULSE:
+        case DISPLAY_MODE_PULSE: {
+            pxg_apply(&pixel_group, dsp_mode_pulse, (void*)data);
+            dsp_mode_pulse_tick((void*)data, frame_time_us);
             break;
+        }
     }
 }
 
@@ -77,12 +98,25 @@ void map_clear() {
     quickpix_show(&quickpix);
 }
 
-void map_next_display_mode_cb(uint pin, uint32_t events) {
+void map_next_display_mode() {
     dsp_next_preset(&display_mode_index);
 }
 
-PixelGroup* map_get_pxg() {
+const PixelGroup* map_get_pxg() {
     return &pixel_group;
+}
+
+const IntersectionSet* map_get_intx_set() {
+    return &intersection_set;
+}
+
+const PixelTrainLineMap* map_get_pxtl() {
+    return &pixel_train_line_map;
+}
+
+void map_get_train_lines(const TrainLine* tl_out, unsigned* tl_cnt) {
+    tl_out = train_lines;
+    *tl_cnt = train_lines_cnt;
 }
 
 // HELPER FUNCTIONS

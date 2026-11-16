@@ -79,16 +79,16 @@ PixelHandle tl_get_neighbor(const TrainLine* tl, unsigned* pixel_idx, int forwar
 // get neighboring pixel in opposite direction of previous (neighbor in continuing direction)
 PixelHandle tl_get_next_neighbor(const TrainLine* tl, unsigned* pixel_idx, unsigned* prev_idx);
 // get neighboring pixel on any train line
-PixelHandle tl_get_random_neighbor(PixelHandle pixel, IntersectionSet* intx_set);
+PixelHandle tl_get_random_neighbor(PixelHandle pixel, const IntersectionSet* intx_set, const PixelTrainLineMap* pxtl_map);
 // get neighboring pixel on any train line in any direction except previous (don't back-track)
-PixelHandle tl_get_random_next_neighbor(PixelHandle pixel, PixelHandle prev, IntersectionSet* intx_set);
+PixelHandle tl_get_random_next_neighbor(PixelHandle pixel, PixelHandle prev, const IntersectionSet* intx_set, const PixelTrainLineMap* pxtl_map);
 
 // PIXEL TRAIN LINE MAP
 
 void pxtl_init(PixelTrainLineMap* pxtl);
 // don't allow manual insertion by user... (insert automatically when registering train lines with pixels
 static void pxtl_insert(PixelTrainLineMap* pxtl, PixelHandle px, TrainLine* tl); // TODO move static func declarations to src file
-TrainLine* pxtl_search(PixelTrainLineMap* pxtl, PixelHandle px);
+TrainLine* pxtl_search(const PixelTrainLineMap* pxtl, PixelHandle px);
 static int pxtl_compare(struct avl_node* lhs, struct avl_node* rhs, void* aux);
 
 // INTERSECTION
@@ -101,7 +101,7 @@ void intx_assign_train_lines(Intersection* intx, int lines_cnt, ...);
 
 void intx_set_init(IntersectionSet* intx_set);
 void intx_set_insert(IntersectionSet* intx_set, Intersection intx);
-Intersection intx_set_search(IntersectionSet* intx_set, PixelHandle px);
+Intersection intx_set_search(const IntersectionSet* intx_set, PixelHandle px);
 // no deletion function (not necessary for this project as tree survives full process lifetime)
 // don't expose avl comparison operator
 static int intx_set_compare(struct avl_node* lhs, struct avl_node* rhs, void* aux);

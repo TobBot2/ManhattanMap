@@ -1,8 +1,14 @@
 #include "Pixel.h"
 
+#include <math.h>
+
 uint32_t color_to_hardware_format(Color c) {
     // store as grb (Color is stored as grb in memory already)
     return (*(uint32_t*)&c); // remove trailing garbage data (Color is 24 bits)
+}
+
+Color color_from(uint8_t r, uint8_t g, uint8_t b) {
+    return (Color){0, r, g, b};
 }
 
 Color color_mix(Color c1, Color c2, float mix) {
@@ -79,6 +85,16 @@ int px_compare(PixelHandle lhs, PixelHandle rhs) {
     } else {
         return (int)lhs.chain - (int)rhs.chain;
     }
+}
+
+float px_dist(PixelHandle px1, PixelHandle px2) {
+    float px1_x, px1_y;
+    px_get_position(px1, &px1_x, &px1_y);
+    float px2_x, px2_y;
+    px_get_position(px2, &px2_x, &px2_y);
+    float a = px2_x - px1_x;
+    float b = px2_y - px1_y;
+    return sqrtf(a*a + b*b);
 }
 
 int px_is_valid(PixelHandle px) {

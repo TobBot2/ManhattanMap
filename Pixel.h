@@ -7,7 +7,7 @@
 typedef uint16_t PixelIndex; // limit is small due to 5m limit of lights anyway
 
 typedef struct Color_t {
-    uint8_t x, g, r, b; // stored grb order for hardware reasons
+    uint8_t x, r, g, b; // stored grb order for hardware reasons
 } Color;
 
 typedef struct PixelData_t {
@@ -39,6 +39,7 @@ typedef Color (*PixelTransformFn)(PixelHandle, void*);
 // COLOR
 
 uint32_t color_to_hardware_format(Color c);
+Color color_from(uint8_t r, uint8_t g, uint8_t b);
 Color color_mix(Color c1, Color c2, float mix); // mix [0, 1) = % contribution of c2 (remaining is c1)
 
 // PIXEL GROUP
@@ -53,6 +54,7 @@ PixelHandle px_create_empty();
 void px_next(PixelHandle* px);
 int px_is_empty(PixelHandle px); // boolean return
 int px_compare(PixelHandle lhs, PixelHandle rhs); // cmp chain.index output -, 0, + if lhs <, =, > rhs
+float px_dist(PixelHandle px1, PixelHandle px2);
 int px_is_valid(PixelHandle px); // boolean return
 PixelData* px_get_data(PixelHandle px);
 void px_set_color(PixelHandle px, Color color);

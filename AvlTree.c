@@ -305,7 +305,7 @@ struct avl_node* avl_prev(struct avl_node *node)
     return NULL;
 }
 
-struct avl_node* avl_search(struct avl_tree *tree,
+struct avl_node* avl_search(const struct avl_tree *tree,
                             struct avl_node *node,
                             avl_cmp_func *func)
 // exact match

@@ -6,7 +6,7 @@
 #include "pico/time.h"
 #include "pico/types.h"
 
-#include "ManhattanMap.h"
+#include "Map.h"
 #include "Pixel.h"
 
 #define BUTTON_PIN 3
@@ -19,12 +19,14 @@ static void initialize_io();
 static void button_cb(uint pin, uint32_t events);
 static volatile bool button_pressed = false;
 
+#ifdef SETUP_MODE
 // extra debug stuff
 static void debug_next_light_cb(uint pin, uint32_t events);
 static PixelHandle debugLight = {
     .chain = 0,
     .index = 540,
 };
+#endif
 
 [[noreturn]]
 int main(void) {
@@ -53,7 +55,8 @@ int main(void) {
             map_display();
         }
         sleep_ms(50); // sleep a little bit just cuz (no need for super fast update in debug)
-#else
+        return;
+#endif
         absolute_time_t frame_start = get_absolute_time();
 
         if (button_pressed) { map_next_display_mode(); }
@@ -67,7 +70,6 @@ int main(void) {
         if (remaining_time_us > 0) {
             sleep_us((uint64_t)remaining_time_us);
         }
-#endif
     }
 }
 

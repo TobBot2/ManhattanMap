@@ -26,11 +26,9 @@ typedef struct Quickpix_t {
     unsigned count;
 } Quickpix;
 
-static Quickpix quickpix_create() {
-    Quickpix quickpix;
-    quickpix.chains = NULL;
-    quickpix.count = 0;
-    return quickpix;
+static void quickpix_init(Quickpix* quickpix) {
+    quickpix->chains = NULL;
+    quickpix->count = 0;
 }
 
 static bool quickpix_add_chain(Quickpix* quickpix, uint pin, uint count) {
@@ -51,18 +49,14 @@ static bool quickpix_add_chain(Quickpix* quickpix, uint pin, uint count) {
     return true;
 }
 
-static void quickpix_show(Quickpix* quickpix) {
+static void quickpix_show(const Quickpix* quickpix) {
     for (unsigned c = 0; c < quickpix->count; c++) {
         QuickpixChain* chain = &quickpix->chains[c];
         for (uint i = 0; i < chain->count; i++) {
             pio_sm_put_blocking(chain->pio, chain->sm, chain->pixels[i] << 8u);
         }
     }
-    sleep_ms(10); // ensure protocol latch (minimum 50 us)
-}
-
-static uint32_t quickpix_rgb(uint8_t r, uint8_t g, uint8_t b) {
-    return ((uint32_t)g << 16) | ((uint32_t)r << 8) | (uint32_t)b;
+    sleep_us(100); // ensure protocol latch (minimum 50 us)
 }
 
 #endif //MANHATTANMAP_WS2812_H

@@ -1,8 +1,6 @@
 #ifndef MANHATTANMAP_MANHATTANMAP_H
 #define MANHATTANMAP_MANHATTANMAP_H
 
-#include "pico/types.h"
-
 #include "Pixel.h"
 #include "TrainLine.h"
 

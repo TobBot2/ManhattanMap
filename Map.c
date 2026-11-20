@@ -1,11 +1,10 @@
-#include "ManhattanMap.h"
+#include "Map.h"
 
 #include <stdio.h>
 
 #include "DisplayMode.h"
 #include "quickpix.h"
 #include "TrainLine.h"
-#include "ManhattanLayout.h"
 
 static Quickpix quickpix;
 
@@ -25,22 +24,18 @@ void register_map();
 // TODO: should pass in config struct...
 void map_init() {
     // quickpix
-    quickpix = quickpix_create();
-    quickpix_add_chain(&quickpix, 6, 618); // TODO: define in ManhattanLayout.h file?
+    quickpix_init(&quickpix);
+    quickpix_add_chain(&quickpix, 6, 618);
     quickpix_add_chain(&quickpix, 7, 548);
 
-
     // pxg
-    pxg_init(&pixel_group); // TODO: standardize convention (= create() or init()?) I think I prefer init().
+    pxg_init(&pixel_group);
     for (unsigned i = 0; i < quickpix.count; i++) {
         pxg_add_chain(&pixel_group, quickpix.chains[i].count);
     }
 
-    // register map details (train lines, intxs, etc.)
     register_map();
-
-    // initialize display modes
-
+    dsp_init_presets();
 }
 
 void map_update(int64_t frame_time_us) {
@@ -123,11 +118,8 @@ void map_get_train_lines(const TrainLine* tl_out, unsigned* tl_cnt) {
 
 void register_map() {
     // init globals
-    // pxg_init(&pixel_group); already registered
     pxtl_init(&pixel_train_line_map);
     intx_set_init(&intersection_set);
 
-    // call map-specific registry setup
-    // manhattan_register_pixels(&pixel_group);
-    // manhattan_register_trainlines(&pixel_group, &pixel_train_line_map, &intersection_set);
+    // TODO: parse config struct?
 }

@@ -3,7 +3,7 @@
 #include <math.h>
 
 #include "TrainLine.h"
-#include "ManhattanMap.h"
+#include "Map.h"
 
 // array of all display presets, accessible via index
 static const DisplayData DISPLAY_MODE_PRESETS[] = {

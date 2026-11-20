@@ -1,7 +1,6 @@
 #ifndef MANHATTANMAP_TRAINLINE_H
 #define MANHATTANMAP_TRAINLINE_H
 
-#include <stdarg.h>
 #include <stdlib.h>
 
 #include "Pixel.h"
@@ -40,6 +39,11 @@ typedef struct TrainLine_t {
     PixelHandle* pixels;
     unsigned pixels_cnt;
 } TrainLine;
+
+// TODO: Combine PixelTrainLineMap and IntersectionSet into the same map
+//  (so that PixelTrainLineMap returns all train lines of the key's pixel,
+//  and IntersectionSet becomes redundant) -> allows one call to get all
+//  train lines - whether its one or multiple.
 
 // avl tree
 typedef struct avl_tree PixelTrainLineMap;

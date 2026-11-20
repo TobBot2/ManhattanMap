@@ -1,6 +1,6 @@
 #include "TrainLine.h"
 
-#include "ManhattanMap.h"
+#include "Map.h"
 
 Color tl_name_to_color(TrainLineName line) {
     switch (line) {

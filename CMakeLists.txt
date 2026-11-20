@@ -18,11 +18,13 @@ add_executable(ManhattanMap
         DisplayMode.c
         AvlTree.h
         AvlTree.c
-        ManhattanMap.h
-        ManhattanMap.c
+        Map.h
+        Map.c
         quickpix.h
-        ManhattanMap.c
+        Map.c
         ManhattanLayout.h
+        config.h
+        Manhattan.c
 )
 
 # generate .pio.h file

@@ -10,6 +10,11 @@
 #include "pico/types.h"
 #include "ws2812.pio.h"
 
+// TODO: I should abstract away chhains for users of quickipx
+//  so that users just see an index assigned to each pixel.
+//  All pixels are stored contiguously in memory, with pointers
+//  to the start of each physical chain within the master array.
+
 typedef struct QuickpixChain_t {
     // ws2812 stuff
     PIO pio;

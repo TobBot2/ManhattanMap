@@ -1,51 +1,39 @@
 #include "config.h"
 
+#define COLOR(r, g, b) { 0x00, r, g, b }
 
 // ******************************************************************************
 //                                CHAIN CONFIG
 // ******************************************************************************
 
-#define CHAIN_SEGMENTS_1_COUNT 12
-const ChainSegmentConfig CHAIN_SEGMENTS_1[CHAIN_SEGMENTS_1_COUNT] = {
-    {
-        .begin = 0, .begin_x = 0, .begin_y = 0,
-        .end = 0, .end_x = 0, .end_y = 0
-    },
-    // TODO x however many segments...
-};
-
-#define CHAIN_SEGMENTS_2_COUNT 12
-const ChainSegmentConfig CHAIN_SEGMENTS_2[CHAIN_SEGMENTS_2_COUNT] = {
-    {
-        .begin = 0, .begin_x = 0, .begin_y = 0,
-        .end = 0, .end_x = 0, .end_y = 0
-    },
-    // TODO x however many segments...
-};
-
-#define CHAINS_COUNT 2
-const ChainConfig CHAINS_CONFIG[CHAINS_COUNT] = {
+const ChainConfig CHAINS_CONFIG[] = {
     {
         .pin = 6,
         .leds_count = 618,
-        .pixel_segments_positions = CHAIN_SEGMENTS_1,
-        .pixel_segment_positions_count = CHAIN_SEGMENTS_1_COUNT
     },
     {
         .pin = 7,
         .leds_count = 548,
-        .pixel_segments_positions = CHAIN_SEGMENTS_2,
-        .pixel_segment_positions_count = CHAIN_SEGMENTS_2_COUNT
     }
 };
 
+// ******************************************************************************
+//                              PIXELSEGMENT CONFIG
+// ******************************************************************************
+
+const PixelSegmentConfig PIXEL_SEGMENTS[] = {
+    {
+        .begin = { .index = 0, .chain = 0, .group = NULL }, .begin_x = 0, .begin_y = 0,
+        .end = { .index = 20, .chain = 0, .group = NULL }, .end_x = 0, .end_y = 0
+    },
+    // TODO x however many segments...
+};
 
 // ******************************************************************************
 //                              TRAINLINE CONFIG
 // ******************************************************************************
 
-#define TRAINLINE_SEGMENTS_1_COUNT 12
-const TrainLineSegmentConfig TRAINLINE_SEGMENTS_1[TRAINLINE_SEGMENTS_1_COUNT] = {
+const TrainLineSegmentConfig TRAINLINE_SEGMENTS_1[] = {
     {
         .begin = { .index = 0, .chain = 0, .group = NULL },
         .end = { .index = 0, .chain = 0, .group = NULL }
@@ -54,16 +42,56 @@ const TrainLineSegmentConfig TRAINLINE_SEGMENTS_1[TRAINLINE_SEGMENTS_1_COUNT] = 
 };
 
 // TODO all TRAINLINES
-
-#define TRAINLINES_COUNT 20
-const TrainLineConfig TRAINLINES_CONFIG[TRAINLINES_COUNT] = {
-    {
-        .train_line = LINE_1,
-        .segment = TRAINLINE_SEGMENTS_1,
-        .segments_count = TRAINLINE_SEGMENTS_1_COUNT,
+const TrainLineConfig TRAINLINES_CONFIG[] = {
+    { // 1 line
+        .color = COLOR(0xEE, 0x35, 0x2E),
+        .segments = TRAINLINE_SEGMENTS_1,
+        .segments_count = sizeof(TRAINLINE_SEGMENTS_1) / sizeof(*TRAINLINE_SEGMENTS_1)
     },
     // TODO x20...
 };
+
+// line colors:
+// switch (line) {
+//     case LINE_1:
+//     case LINE_2:
+//     case LINE_3:
+//         return (Color){ .r = 0xEE, .g = 0x35, .b = 0x2E };
+//
+//     case LINE_A:
+//     case LINE_C:
+//     case LINE_E:
+//         return (Color){ .r = 0x00, .g = 0x39, .b = 0xA6 };
+//
+//     case LINE_4:
+//     case LINE_5:
+//     case LINE_6:
+//         return (Color){ .r = 0x00, .g = 0x93, .b = 0x3C };
+//
+//     case LINE_B:
+//     case LINE_D:
+//     case LINE_F:
+//     case LINE_M:
+//         return (Color){ .r = 0xFF, .g = 0x63, .b = 0x19 };
+//
+//     case LINE_Q:
+//     case LINE_N:
+//     case LINE_R:
+//     case LINE_W:
+//         return (Color){ .r = 0xFC, .g = 0xCC, .b = 0x0A };
+//
+//     case LINE_7:
+//         return (Color){ .r = 0xB9, .g = 0x33, .b = 0xAD };
+//
+//     case LINE_L:
+//         return (Color){ .r = 0xA7, .g = 0xA9, .b = 0xAC };
+//
+//     case LINE_S:
+//         return (Color){ .r = 0x80, .g = 0x81, .b = 0x83 };
+//
+//     default:
+//         return (Color){ .r = 0x00, .g = 0x00, .b = 0x00 };
+// }
 
 // ******************************************************************************
 //                                 MAIN CONFIG
@@ -76,10 +104,13 @@ const Config CONFIG = {
     },
 
     .chain_configs = CHAINS_CONFIG,
-    .chains_count = CHAINS_COUNT,
+    .chains_count = sizeof(CHAINS_CONFIG) / sizeof(*CHAINS_CONFIG),
 
-    .tl_configs = TRAINLINES_CONFIG,
-    .tls_count = TRAINLINES_COUNT,
+    .pixel_segments = PIXEL_SEGMENTS,
+    .pixel_segments_count = sizeof(PIXEL_SEGMENTS) / sizeof(*PIXEL_SEGMENTS),
+
+    .trainline_configs = TRAINLINES_CONFIG,
+    .trainlines_count = sizeof(TRAINLINES_CONFIG) / sizeof(*TRAINLINES_CONFIG),
 
     .max_brightness = 0xef,
     .target_fps = 60.f

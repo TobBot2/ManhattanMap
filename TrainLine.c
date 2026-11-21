@@ -1,78 +1,27 @@
 #include "TrainLine.h"
 
+#include <stdio.h>
+
 #include "Map.h"
 
-Color tl_name_to_color(TrainLineName line) {
-    switch (line) {
-        case LINE_1:
-        case LINE_2:
-        case LINE_3:
-            return (Color){ .r = 0xEE, .g = 0x35, .b = 0x2E };
-
-        case LINE_A:
-        case LINE_C:
-        case LINE_E:
-            return (Color){ .r = 0x00, .g = 0x39, .b = 0xA6 };
-
-        case LINE_4:
-        case LINE_5:
-        case LINE_6:
-            return (Color){ .r = 0x00, .g = 0x93, .b = 0x3C };
-
-        case LINE_B:
-        case LINE_D:
-        case LINE_F:
-        case LINE_M:
-            return (Color){ .r = 0xFF, .g = 0x63, .b = 0x19 };
-
-        case LINE_Q:
-        case LINE_N:
-        case LINE_R:
-        case LINE_W:
-            return (Color){ .r = 0xFC, .g = 0xCC, .b = 0x0A };
-
-        case LINE_7:
-            return (Color){ .r = 0xB9, .g = 0x33, .b = 0xAD };
-
-        case LINE_L:
-            return (Color){ .r = 0xA7, .g = 0xA9, .b = 0xAC };
-
-        case LINE_S:
-            return (Color){ .r = 0x80, .g = 0x81, .b = 0x83 };
-
-        default:
-            return (Color){ .r = 0x00, .g = 0x00, .b = 0x00 };
-    }
-}
+static int pxtl_map_compare(struct avl_node* lhs, struct avl_node* rhs, void* aux);
 
 // ******************************************************************************
 //                                 TRAIN LINE
 // ******************************************************************************
 
-void tl_init(TrainLine* tl, TrainLineName line) {
-    tl->name = line;
+void tl_init(TrainLine* tl, Color color) {
+    tl->color = color;
     tl->pixels = NULL;
     tl->pixels_cnt = 0;
 }
 
-void tl_add_pixels(TrainLine* tl, const PixelHandle* pixels, unsigned count, PixelTrainLineMap* pxtl) {
+void tl_add_segment(TrainLine* tl, PixelHandle start, PixelHandle end, PixelTrainLinesMap* pxtl_map) {
     PixelIndex original_cnt = tl->pixels_cnt;
 
-    tl->pixels_cnt += count;
-    tl->pixels = realloc(tl->pixels, tl->pixels_cnt * sizeof(PixelHandle));
-    for (int i = 0; i < count; i++) {
-        tl->pixels[original_cnt + i] = pixels[i];
-        pxtl_insert(pxtl, pixels[i], tl);
-    }
-}
+    if (start.group != end.group) return; // must be a part of the same group
+    if (px_compare(end, start) < 0) return; // end must be after start
 
-void tl_add_segment(TrainLine* tl, PixelHandle start, PixelHandle end, PixelTrainLineMap* pxtl) {
-    PixelIndex original_cnt = tl->pixels_cnt;
-
-    // must be a part of the same chain and group
-    if (start.group != end.group || start.chain != end.chain) {
-        return;
-    }
 
     // reserve space
     unsigned extra_space = end.index - start.index + 1; // + 1 for inclusive range [start, end]
@@ -83,6 +32,7 @@ void tl_add_segment(TrainLine* tl, PixelHandle start, PixelHandle end, PixelTrai
     for (PixelIndex i = 0; i < extra_space; i++) {
         tl->pixels[original_cnt + i].chain = start.chain;
         tl->pixels[original_cnt + i].index = start.index + i;
+        pxtl_map_associate_line(pxtl_map, tl->pixels[original_cnt + i], tl);
     }
 }
 
@@ -103,21 +53,14 @@ PixelHandle tl_get_next_neighbor(const TrainLine* tl, unsigned* pixel_idx, unsig
     return tl_get_neighbor(tl, pixel_idx, forward);
 }
 
-PixelHandle tl_get_random_neighbor(PixelHandle pixel, const IntersectionSet* intx_set, const PixelTrainLineMap* pxtl_map) {
-    Intersection intx = intx_set_search(intx_set, pixel);
+PixelHandle tl_get_random_neighbor(PixelHandle pixel, const PixelTrainLinesMap* pxtl_map) {
+    PixelTrainLinesNode* pxtl_node = pxtl_map_search(pxtl_map, pixel);
     TrainLine* tl = NULL;
 
-    // if not an intersection, set train line to the one found in pxtl_map
-    if (intx_is_empty(&intx)) {
-        tl = pxtl_search(pxtl_map, pixel);
-    }
-
     for (unsigned try = 0; try < 10; try++) {
-        // if an intersection, set train line to one in intx at random
-        if (!intx_is_empty(&intx)) {
-            int rand_line = rand() % intx.lines_cnt;
-            tl = intx.lines[rand_line];
-        }
+        // set train line to one in pxtl_node at random
+        int rand_line = rand() % pxtl_node->lines_cnt;
+        tl = pxtl_node->lines[rand_line];
 
         // find pixel in train line it is a part of
         for (unsigned px = 0; px < tl->pixels_cnt; px++) {
@@ -139,11 +82,11 @@ PixelHandle tl_get_random_neighbor(PixelHandle pixel, const IntersectionSet* int
     return px_create_empty();
 }
 
-PixelHandle tl_get_random_next_neighbor(PixelHandle pixel, PixelHandle prev, const IntersectionSet* intx_set, const PixelTrainLineMap* pxtl_map) {
+PixelHandle tl_get_random_next_neighbor(PixelHandle pixel, PixelHandle prev, const PixelTrainLinesMap* pxtl_map) {
     PixelHandle neighbor;
     for (unsigned try = 0; try < 20; try++) {
         // ensure next != prev
-        if (px_compare(neighbor = tl_get_random_neighbor(pixel, intx_set, pxtl_map), prev) != 0) {
+        if (px_compare(neighbor = tl_get_random_neighbor(pixel, pxtl_map), prev) != 0) {
             return neighbor;
         }
     }
@@ -152,93 +95,47 @@ PixelHandle tl_get_random_next_neighbor(PixelHandle pixel, PixelHandle prev, con
 }
 
 // ******************************************************************************
-//                            PIXEL TRAIN LINE MAP
-// ******************************************************************************
-
-void pxtl_init(PixelTrainLineMap* pxtl) {
-    avl_init(pxtl, NULL);
-}
-
-void pxtl_insert(PixelTrainLineMap* pxtl, PixelHandle px, TrainLine* tl) {
-    PixelTrainLineNode node;
-    node.key = px;
-    node.value = tl;
-    avl_insert(pxtl, &node.avl, pxtl_compare);
-}
-
-TrainLine* pxtl_search(const PixelTrainLineMap* pxtl, PixelHandle px) {
-    PixelTrainLineNode query;
-    query.key = px;
-
-    struct avl_node* found = avl_search(pxtl, &query.avl, pxtl_compare);
-    if (!found) return NULL; // only possible if pixel is invalid
-
-    return _get_entry(found, PixelTrainLineNode, avl)->value;
-}
-
-int pxtl_compare(struct avl_node* lhs, struct avl_node* rhs, void* aux) {
-    PixelTrainLineNode* l_pxtl = _get_entry(lhs, PixelTrainLineNode, avl);
-    PixelTrainLineNode* r_pxtl = _get_entry(rhs, PixelTrainLineNode, avl);
-
-    return px_compare(l_pxtl->key, r_pxtl->key);
-}
-
-// ******************************************************************************
-//                                INTERSECTION
-// ******************************************************************************
-
-Intersection intx_create_empty() {
-    return (Intersection){
-        .lines = NULL,
-        .lines_cnt = 0,
-        .pixel = px_create_empty()
-    };
-}
-
-int intx_is_empty(const Intersection* intx) {
-    return intx->lines == NULL;
-}
-
-void intx_assign_train_lines(Intersection* intx, int lines_cnt, ...) {
-    va_list args;
-
-    intx->lines_cnt = lines_cnt;
-    intx->lines = malloc(lines_cnt * sizeof(TrainLine*));
-    va_start(args, lines_cnt);
-    for (int i = 0; i < lines_cnt; i++) {
-        intx->lines[i] = va_arg(args, TrainLine*);
-    }
-    va_end(args);
-}
-
-// ******************************************************************************
 //                              INTERSECTION SET
 // ******************************************************************************
 
-void intx_set_init(IntersectionSet* intx_set) {
-    avl_init(intx_set, NULL);
+void pxtl_map_init(PixelTrainLinesMap* pxtl_map) {
+    avl_init(pxtl_map, NULL);
 }
 
-void intx_set_insert(IntersectionSet* intx_set, Intersection intx) {
-    IntersectionNode node;
-    node.key = intx;
-    avl_insert(intx_set, &node.avl, intx_set_compare);
+void pxtl_map_associate_line(PixelTrainLinesMap* pxtl_map, PixelHandle px, TrainLine* tl) {
+    // create new (empty) node to insert into tree
+    PixelTrainLinesNode* node = malloc(sizeof(PixelTrainLinesNode));
+    node->key = px;
+    node->lines = NULL;
+    node->lines_cnt = 0;
+
+    // insert into tree and check if success (or if the node already exists)
+    struct avl_node* existing_node = avl_insert(pxtl_map, &node->avl, pxtl_map_compare);
+    if (existing_node != &node->avl) {
+        // node already exists in tree, free new node and point node to existing node
+        free(node);
+        node = _get_entry(existing_node, PixelTrainLinesNode, avl);
+    }
+
+    // add train line to node
+    node->lines_cnt ++;
+    node->lines = realloc(node->lines, sizeof(*node->lines) * node->lines_cnt);
+    node->lines[node->lines_cnt - 1] = tl;
 }
 
-Intersection intx_set_search(const IntersectionSet* intx_set, PixelHandle px) {
-    IntersectionNode query;
-    query.key = intx_create_empty();
-    query.key.pixel = px;
+PixelTrainLinesNode* pxtl_map_search(const PixelTrainLinesMap* pxtl_map, PixelHandle px) {
+    PixelTrainLinesNode query;
+    query.key = px;
 
-    struct avl_node* found = avl_search(intx_set, &query.avl, intx_set_compare);
-    if (!found) return intx_create_empty();
+    struct avl_node* found = avl_search(pxtl_map, &query.avl, pxtl_map_compare);
+    if (!found) return NULL;
 
-    return _get_entry(found, IntersectionNode, avl)->key;
+    return _get_entry(found, PixelTrainLinesNode, avl);
 }
 
-int intx_set_compare(struct avl_node* lhs, struct avl_node* rhs, void* aux) {
-    IntersectionNode* l_intx = _get_entry(lhs, IntersectionNode, avl);
-    IntersectionNode* r_intx = _get_entry(rhs, IntersectionNode, avl);
+int pxtl_map_compare(struct avl_node* lhs, struct avl_node* rhs, void* aux) {
+    PixelTrainLinesNode* l_intx = _get_entry(lhs, PixelTrainLinesNode, avl);
+    PixelTrainLinesNode* r_intx = _get_entry(rhs, PixelTrainLinesNode, avl);
 
-    return px_compare(l_intx->key.pixel, r_intx->key.pixel);
+    return px_compare(l_intx->key, r_intx->key);
 }

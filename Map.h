@@ -15,8 +15,7 @@ void map_next_display_mode();
 
 // expose some vars for special use cases
 const PixelGroup* map_get_pxg();
-const IntersectionSet* map_get_intx_set();
-const PixelTrainLineMap* map_get_pxtl();
-void map_get_train_lines(const TrainLine* tl_out, unsigned* tl_cnt);
+const PixelTrainLinesMap* map_get_pxtl_map();
+void map_get_train_lines(const TrainLine** tl_out, unsigned* tl_cnt);
 
 #endif //MANHATTANMAP_MANHATTANMAP_H

@@ -2,20 +2,20 @@
 #define MANHATTANMAP_CONFIG_H
 
 #include "Pixel.h"
-#include "TrainLine.h"
 
-typedef struct ChainSegmentConfig_t {
-    PixelIndex begin;
+// TODO: should split up dependencies between pixel groups and
+//  quickipx, ideally eliminating references to non-primitives
+
+typedef struct PixelSegmentConfig_t {
+    PixelHandle begin;
     float begin_x, begin_y;
-    PixelIndex end; // inclusive
+    PixelHandle end; // inclusive
     float end_x, end_y;
-} ChainSegmentConfig;
+} PixelSegmentConfig;
 
 typedef struct ChainConfig_t {
     int pin;
     PixelIndex leds_count;
-    const ChainSegmentConfig* pixel_segments_positions;
-    unsigned pixel_segment_positions_count;
 } ChainConfig;
 
 typedef struct TrainLineSegmentConfig_t {
@@ -24,8 +24,8 @@ typedef struct TrainLineSegmentConfig_t {
 } TrainLineSegmentConfig;
 
 typedef struct TrainLineConfig_t {
-    TrainLineName train_line;
-    const TrainLineSegmentConfig* segment;
+    Color color;
+    const TrainLineSegmentConfig* segments;
     unsigned segments_count;
 } TrainLineConfig;
 
@@ -38,8 +38,11 @@ typedef struct Config_t {
     const ChainConfig* chain_configs;
     unsigned chains_count;
 
-    const TrainLineConfig* tl_configs;
-    unsigned tls_count;
+    const PixelSegmentConfig* pixel_segments;
+    unsigned pixel_segments_count;
+
+    const TrainLineConfig* trainline_configs;
+    unsigned trainlines_count;
 
     float max_brightness;
     float target_fps;

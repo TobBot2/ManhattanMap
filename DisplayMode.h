@@ -27,7 +27,7 @@ typedef struct DisplayData_t {
     union {
         Color color;                        // DISPLAY_MODE_SOLID
 
-        PixelTrainLineMap* pxtl;            // DISPLAY_MODE_TRAIN_LINE_COLORS
+        PixelTrainLinesMap* pxtl_map;       // DISPLAY_MODE_TRAIN_LINE_COLORS
 
         struct {                            // DISPLAY_MODE_WAVE
             Color color1;

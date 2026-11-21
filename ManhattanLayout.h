@@ -28,7 +28,7 @@ void manhattan_register_pixels(PixelGroup* pixel_group) {
     // TODO... etc. etc.
 }
 
-void manhattan_register_trainlines(PixelGroup* pixel_group, PixelTrainLineMap* pixel_train_line_map, IntersectionSet* intersection_set) {
+void manhattan_register_trainlines(PixelGroup* pixel_group, PixelTrainLineMap* pixel_train_line_map, PixelTrainLinesMap* intersection_set) {
     PixelHandle px1 = (PixelHandle) {
         .index = 0,
         .chain = 0,

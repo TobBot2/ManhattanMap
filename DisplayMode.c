@@ -78,7 +78,7 @@ Color dsp_mode_solid(PixelHandle px, void* data_mode) {
 
 Color dsp_mode_train_line_colors(PixelHandle px, void* data_mode) {
     DisplayData* data = (DisplayData*)data_mode;
-    return tl_name_to_color(pxtl_search(data->pxtl, px)->name);
+    return pxtl_map_search(data->pxtl_map, px)->lines[0]->color;
 }
 
 Color dsp_mode_wave(PixelHandle px, void* data_mode) {
@@ -144,14 +144,14 @@ Color dsp_mode_simulate_trains(PixelHandle px, void* data_mode) {
         }
     }
 
-    return (Color) { 0 };
+    return color_from(0x10, 0x10, 0x10);
 }
 
 SimulatedTrain dsp_mode_simulate_trains_begin_random_train() {
     // get random train line
     const TrainLine* tls = NULL;
     unsigned tls_cnt;
-    map_get_train_lines(tls, &tls_cnt);
+    map_get_train_lines(&tls, &tls_cnt);
     const TrainLine* tl = &tls[rand() % tls_cnt];
 
     // begin on a random end of train line
@@ -191,7 +191,7 @@ void dsp_mode_simulate_trains_tick(void* data_mode, int64_t elapsed_us) {
         if (train->interp >= 1.f) {
             float overshoot = (1 - train->interp) * dist;
 
-            PixelHandle next = tl_get_random_next_neighbor(train->pos, train->prev, map_get_intx_set(), map_get_pxtl());
+            PixelHandle next = tl_get_random_next_neighbor(train->pos, train->prev, map_get_pxtl_map());
             if (px_is_empty(next)) { // no next found... restart train
                 *train = dsp_mode_simulate_trains_begin_random_train();
             }

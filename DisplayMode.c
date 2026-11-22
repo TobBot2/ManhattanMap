@@ -2,6 +2,7 @@
 
 #include <math.h>
 
+#include "Pixel.h"
 #include "TrainLine.h"
 #include "Map.h"
 
@@ -43,6 +44,12 @@ static const DisplayData DISPLAY_MODE_PRESETS[] = {
 
 static const DisplayModeIndex DISPLAY_MODE_PRESETS_CNT = sizeof(DISPLAY_MODE_PRESETS) / sizeof(DisplayData);
 
+static float dist2d(float x1, float y1, float x2, float y2) {
+    float dx = x2 - x1;
+    float dy = y2 - y1;
+    return sqrtf(dx * dx + dy * dy);
+}
+
 void dsp_next_preset(DisplayModeIndex* idx) {
     *idx = (*idx + 1) % DISPLAY_MODE_PRESETS_CNT;
 }
@@ -71,24 +78,42 @@ void dsp_init_presets() {
 //                              DISPLAY MODE FUNCS
 // ******************************************************************************
 
-Color dsp_mode_solid(PixelHandle px, void* data_mode) {
+void dsp_mode_solid(const PixelGroup* pxg, PixelIndex px, void* data_mode) {
     DisplayData* data = (DisplayData*)data_mode;
-    return data->color;
+    px_set_color(pxg, px, data->color);
 }
 
-Color dsp_mode_train_line_colors(PixelHandle px, void* data_mode) {
+void dsp_mode_train_line_colors(const PixelGroup* pxg, PixelIndex px, void* data_mode) {
     DisplayData* data = (DisplayData*)data_mode;
-    return pxtl_map_search(data->pxtl_map, px)->lines[0]->color;
+    Color color = {};
+    unsigned count = 0;
+    for (uint32_t m = data->tl_colors.pxtl->tl_masks[px]; m; m &= m - 1) {
+        const TrainLine* tl = &data->tl_colors.tls[__builtin_ctz(m)]; // mask to tl_index to tl
+        color.r += tl->color.r;
+        color.g += tl->color.g;
+        color.b += tl->color.b;
+        count++;
+    }
+
+    if (count == 0) {
+        px_set_color(pxg, px, (Color){ 0 });
+        return;
+    }
+
+    color.r /= count;
+    color.g /= count;
+    color.b /= count;
+    px_set_color(pxg, px, color);
 }
 
-Color dsp_mode_wave(PixelHandle px, void* data_mode) {
+void dsp_mode_wave(const PixelGroup* pxg, PixelIndex px, void* data_mode) {
     DisplayData* data = (DisplayData*)data_mode;
 
     const float wave_length = 10.f;
 
     // get distance along direction of wave
     float px_x, px_y;
-    px_get_position(px, &px_x, &px_y);
+    px_get_position(pxg, px, &px_x, &px_y);
     float distance = px_x * data->wave.dir_x + px_y + data->wave.dir_y; // dot product
 
     // get mix between color1 and color2
@@ -99,7 +124,7 @@ Color dsp_mode_wave(PixelHandle px, void* data_mode) {
     if (mix > .5f) mix = 1.f - mix;
     mix *= 2.f;
 
-    return color_mix(data->wave.color1, data->wave.color2, mix);
+    px_set_color(pxg, px, color_mix(data->wave.color1, data->wave.color2, mix));
 }
 
 void dsp_mode_wave_tick(void* data_mode, int64_t elapsed_us) {
@@ -107,13 +132,13 @@ void dsp_mode_wave_tick(void* data_mode, int64_t elapsed_us) {
     data->wave.elapsed_ms += elapsed_us / 1000;
 }
 
-Color dsp_mode_pulse(PixelHandle px, void* data_mode) {
+void dsp_mode_pulse(const PixelGroup* pxg, PixelIndex px, void* data_mode) {
     DisplayData* data = (DisplayData*)data_mode;
 
     const float pulse_length = 10.f;
 
     float px_x, px_y;
-    px_get_position(px, &px_x, &px_y);
+    px_get_position(pxg, px, &px_x, &px_y);
     float a = px_x - data->pulse.x;
     float b = px_y - data->pulse.y;
     float distance = sqrt(a*a + b*b);
@@ -125,7 +150,7 @@ Color dsp_mode_pulse(PixelHandle px, void* data_mode) {
     if (mix > .5f) mix = 1.f - mix;
     mix *= 2.f;
 
-    return color_mix(data->pulse.color, (Color){ 0, 0, 0, 0 }, mix);
+    px_set_color(pxg, px, color_mix(data->pulse.color, (Color){ 0, 0, 0, 0 }, mix));
 }
 
 void dsp_mode_pulse_tick(void* data_mode, int64_t elapsed_us) {
@@ -133,18 +158,35 @@ void dsp_mode_pulse_tick(void* data_mode, int64_t elapsed_us) {
     data->pulse.elapsed_ms += elapsed_us / 1000;
 }
 
-Color dsp_mode_simulate_trains(PixelHandle px, void* data_mode) {
+void dsp_mode_simulate_trains(const PixelGroup* pxg, PixelIndex px, void* data_mode) {
     DisplayData* data = (DisplayData*)data_mode;
 
+    unsigned r = 0, g = 0, b = 0;
+    unsigned count = 0;
+
     for (unsigned t = 0; t < data->simulate.count; t++) {
-        if (px_compare(px, data->simulate.trains[t].pos) == 0) {
-            return color_mix((Color) { 0 }, data->simulate.trains[t].color, data->simulate.trains[t].interp);
-        } else if (px_compare(px, data->simulate.trains[t].prev) == 0) {
-            return color_mix(data->simulate.trains[t].color, (Color) { 0 }, data->simulate.trains[t].interp);
+        if (px != data->simulate.trains[t].pos && px != data->simulate.trains[t].prev) {
+            continue;
         }
+
+        Color c;
+        if (px == data->simulate.trains[t].pos) {
+            c = color_mix((Color) { 0 }, data->simulate.trains[t].color, data->simulate.trains[t].interp);
+        } else {
+            c = color_mix(data->simulate.trains[t].color, (Color) { 0 }, data->simulate.trains[t].interp);
+        }
+        r += c.r;
+        g += c.g;
+        b += c.b;
+        count++;
     }
 
-    return color_from(0x10, 0x10, 0x10);
+    if (count == 0) {
+        px_set_color(pxg, px, (Color){ 0 });
+    } else {
+        px_set_color(pxg, px, color_from(r / count, g / count, b / count));
+    }
+
 }
 
 SimulatedTrain dsp_mode_simulate_trains_begin_random_train() {
@@ -155,9 +197,9 @@ SimulatedTrain dsp_mode_simulate_trains_begin_random_train() {
     const TrainLine* tl = &tls[rand() % tls_cnt];
 
     // begin on a random end of train line
-    PixelHandle begin_px;
+    PixelIndex begin_px;
     if (rand() % 2 == 0) {
-        begin_px = tl->pixels[tl->pixels_cnt - 1];
+        begin_px = tl->pixels[tl->pixels_count - 1];
     } else {
         begin_px = tl->pixels[0];
     }
@@ -179,26 +221,36 @@ void dsp_mode_simulate_trains_init(void* data_mode) {
 
 }
 
-void dsp_mode_simulate_trains_tick(void* data_mode, int64_t elapsed_us) {
+void dsp_mode_simulate_trains_tick(const PixelGroup* pxg, void* data_mode, int64_t elapsed_us) {
     DisplayData* data = (DisplayData*)data_mode;
+
+    float px1_x, px1_y;
+    float px2_x, px2_y;
 
     for (unsigned t = 0; t < data->simulate.count; t++) {
         SimulatedTrain* train = &data->simulate.trains[t];
 
-        float dist = px_dist(train->pos, train->prev);
+        px_get_position(pxg, train->pos, &px1_x, &px1_y);
+        px_get_position(pxg, train->prev, &px2_x, &px2_y);
+        float dist = dist2d(px1_x, px1_y, px2_x, px2_y);
         train->interp += data->simulate.speed * elapsed_us / 1000000;
 
         if (train->interp >= 1.f) {
             float overshoot = (1 - train->interp) * dist;
 
-            PixelHandle next = tl_get_random_next_neighbor(train->pos, train->prev, map_get_pxtl_map());
-            if (px_is_empty(next)) { // no next found... restart train
+            PixelIndex next = tl_get_random_next_neighbor(train->pos, train->prev, data->tl_colors.pxtl, data->tl_colors.tls);
+            if (next < 0) { // no next found... restart train
                 *train = dsp_mode_simulate_trains_begin_random_train();
             }
 
+            // calc new distance
+            px_get_position(pxg, train->pos, &px1_x, &px1_y);
+            px_get_position(pxg, train->prev, &px2_x, &px2_y);
+            dist = dist2d(px1_x, px1_y, px2_x, px2_y);
+
             train->prev = train->pos;
             train->pos = next;
-            train->interp = overshoot / px_dist(train->pos, train->prev);
+            train->interp = overshoot / dist;
         }
     }
 

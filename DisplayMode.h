@@ -5,8 +5,8 @@
 #include "TrainLine.h"
 
 typedef struct SimulatedTrain_t {
-    PixelHandle pos;
-    PixelHandle prev;
+    PixelIndex pos;
+    PixelIndex prev;
     float interp; // interpolation between prev and curr position.
     Color color;
 } SimulatedTrain;
@@ -27,7 +27,10 @@ typedef struct DisplayData_t {
     union {
         Color color;                        // DISPLAY_MODE_SOLID
 
-        PixelTrainLinesMap* pxtl_map;       // DISPLAY_MODE_TRAIN_LINE_COLORS
+        struct {                            // DISPLAY_MODE_TRAIN_LINE_COLORS
+            PixelTrainLines* pxtl;
+            TrainLine* tls;
+        } tl_colors;
 
         struct {                            // DISPLAY_MODE_WAVE
             Color color1;
@@ -60,14 +63,14 @@ void dsp_init_presets();
 
 // DISPLAY MODE FUNCTIONS
 
-Color dsp_mode_solid(PixelHandle px, void* data_mode);
-Color dsp_mode_train_line_colors(PixelHandle px, void* data_mode);
-Color dsp_mode_wave(PixelHandle px, void* data_mode);
+void dsp_mode_solid(const PixelGroup* pxg, PixelIndex px, void* data_mode);
+void dsp_mode_train_line_colors(const PixelGroup* pxg, PixelIndex px, void* data_mode);
+void dsp_mode_wave(const PixelGroup* pxg, PixelIndex px, void* data_mode);
 void dsp_mode_wave_tick(void* data_mode, int64_t elapsed_us);
-Color dsp_mode_pulse(PixelHandle px, void* data_mode);
+void dsp_mode_pulse(const PixelGroup* pxg, PixelIndex px, void* data_mode);
 void dsp_mode_pulse_tick(void* data_mode, int64_t elapsed_us);
-Color dsp_mode_simulate_trains(PixelHandle px, void* data_mode);
+void dsp_mode_simulate_trains(const PixelGroup* pxg, PixelIndex px, void* data_mode);
 void dsp_mode_simulate_trains_init(void* data_mode);
-void dsp_mode_simulate_trains_tick(void* data_mode, int64_t elapsed_us);
+void dsp_mode_simulate_trains_tick(const PixelGroup* pxg, void* data_mode, int64_t elapsed_us);
 
 #endif //MANHATTANMAP_DISPLAYMODE_H

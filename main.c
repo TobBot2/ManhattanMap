@@ -8,6 +8,8 @@
 
 #include "Map.h"
 #include "Pixel.h"
+#include "config.h"
+#include "quickpix.h"
 
 #define BUTTON_PIN 3
 
@@ -18,6 +20,8 @@
 static void initialize_io();
 static void button_cb(uint pin, uint32_t events);
 static volatile bool button_pressed = false;
+
+Quickpix quickpix;
 
 #ifdef SETUP_MODE
 // extra debug stuff
@@ -31,14 +35,14 @@ static PixelHandle debugLight = {
 [[noreturn]]
 int main(void) {
     initialize_io();
-    map_init();
+    map_init(&quickpix);
 
 #ifdef SETUP_MODE
     map_clear();
     debugLight.group = map_get_pxg();
 #endif
 
-    const int64_t target_frame_time_us = 1000000 / 60; // 60 fps
+    const int64_t target_frame_time_us = 1000000 / CONFIG.target_fps;
 
     printf("Starting main loop...");
     while (true) {
@@ -58,11 +62,11 @@ int main(void) {
         return;
 #endif
         absolute_time_t frame_start = get_absolute_time();
-
-        if (button_pressed) { map_next_display_mode(); }
-        map_update(target_frame_time_us);
-        map_display();
-
+        { // main logic
+            if (button_pressed) { map_next_display_mode(); }
+            map_update(target_frame_time_us);
+            quickpix_show(&quickpix);
+        }
         absolute_time_t frame_end = get_absolute_time();
 
         int64_t frame_time_us = absolute_time_diff_us(frame_start, frame_end);
@@ -94,6 +98,13 @@ static void initialize_io() {
     gpio_init(BUTTON_PIN);
     gpio_pull_up(BUTTON_PIN);
     gpio_set_irq_enabled_with_callback(BUTTON_PIN, GPIO_IRQ_EDGE_FALL, true, &button_cb);
+
+    // quickpix
+    quickpix_init(&quickpix);
+    for (unsigned i = 0; i < CONFIG.chains_count; i++) {
+        const ChainConfig* chain = &CONFIG.chain_configs[i];
+        quickpix_add_chain(&quickpix, chain->pin, chain->leds_count);
+    }
 }
 
 static void button_cb(uint pin, uint32_t events) {

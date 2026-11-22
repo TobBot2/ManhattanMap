@@ -1,15 +1,12 @@
 #ifndef MANHATTANMAP_CONFIG_H
 #define MANHATTANMAP_CONFIG_H
 
-#include "Pixel.h"
-
-// TODO: should split up dependencies between pixel groups and
-//  quickipx, ideally eliminating references to non-primitives
+#include "quickpix.h"
 
 typedef struct PixelSegmentConfig_t {
-    PixelHandle begin;
+    PixelIndex begin;
     float begin_x, begin_y;
-    PixelHandle end; // inclusive
+    PixelIndex end; // inclusive
     float end_x, end_y;
 } PixelSegmentConfig;
 
@@ -19,12 +16,12 @@ typedef struct ChainConfig_t {
 } ChainConfig;
 
 typedef struct TrainLineSegmentConfig_t {
-    PixelHandle begin;
-    PixelHandle end; // inclusive
+    PixelIndex begin;
+    PixelIndex end; // inclusive
 } TrainLineSegmentConfig;
 
 typedef struct TrainLineConfig_t {
-    Color color;
+    uint8_t r, g, b;
     const TrainLineSegmentConfig* segments;
     unsigned segments_count;
 } TrainLineConfig;

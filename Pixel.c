@@ -34,31 +34,17 @@ Color color_mix(Color c1, Color c2, float mix) {
 //                                 PIXEL GROUP
 // ******************************************************************************
 
-void pxg_init(PixelGroup* pxg) {
-    pxg->chains = NULL;
-    pxg->count = 0;
-}
+void pxg_init(PixelGroup* pxg, const Quickpix* quickpix) {
+    static_assert(sizeof(*quickpix->pixels) == sizeof(Color), "pixel datatype should be compatible with Color");
 
-PixelChain* pxg_add_chain(PixelGroup* pxg, unsigned count) {
-    // allocate new chain
-    pxg->count++;
-    pxg->chains = realloc(pxg->chains, pxg->count * sizeof(PixelChain));
-    PixelChain* chain = &pxg->chains[pxg->count - 1];
-
-    // populate new chain
-    chain->data = malloc(count * sizeof(PixelData));
-    chain->count = count;
-
-    return chain;
+    pxg->positions = malloc(quickpix->pixels_count * sizeof(*pxg->positions));
+    pxg->colors = (Color*)quickpix->pixels; // connect hardware pixels to pxg->colors
+    pxg->count = quickpix->pixels_count;
 }
 
 void pxg_apply(const PixelGroup* pxg, PixelTransformFn fn, void* aux) {
-    PixelHandle cur_px;
-    cur_px.group = pxg;
-    for (cur_px.chain = 0; cur_px.chain < pxg->count; cur_px.chain++) {
-        for (cur_px.index = 0; cur_px.index < pxg->chains[cur_px.chain].count; cur_px.index++) {
-            pxg->chains[cur_px.chain].data[cur_px.index].color = fn(cur_px, aux);
-        }
+    for (PixelIndex i = 0; i < pxg->count; i++) {
+        fn(pxg, i, aux);
     }
 }
 
@@ -66,95 +52,19 @@ void pxg_apply(const PixelGroup* pxg, PixelTransformFn fn, void* aux) {
 //                                   PIXELS
 // ******************************************************************************
 
-PixelHandle px_create_empty() {
-    return (PixelHandle){
-        .index = 0,
-        .chain = 0,
-        .group = NULL,
-    };
+void px_set_color(const PixelGroup* pxg, PixelIndex px, Color color) {
+    pxg->colors[px] = color;
+}
+Color px_get_color(const PixelGroup* pxg, PixelIndex px) {
+    return pxg->colors[px];
 }
 
-int px_is_empty(PixelHandle px) {
-    return !px.group;
+void px_set_position(const PixelGroup* pxg, PixelIndex px, float x, float y) {
+    pxg->positions[px][0] = x;
+    pxg->positions[px][1] = y;
 }
 
-int px_compare(PixelHandle lhs, PixelHandle rhs) {
-    // chain is more significant than index
-    if (lhs.chain == rhs.chain) {
-        return (int)lhs.index - (int)rhs.index;
-    } else {
-        return (int)lhs.chain - (int)rhs.chain;
-    }
-}
-
-float px_dist(PixelHandle px1, PixelHandle px2) {
-    float px1_x, px1_y;
-    px_get_position(px1, &px1_x, &px1_y);
-    float px2_x, px2_y;
-    px_get_position(px2, &px2_x, &px2_y);
-    float a = px2_x - px1_x;
-    float b = px2_y - px1_y;
-    return sqrtf(a*a + b*b);
-}
-
-int px_is_valid(PixelHandle px) {
-    if (px_is_empty(px)) return 0;
-    if (px.chain >= px.group->count) return 0;
-    if (px.index >= px.group->chains[px.chain].count) return 0;
-    return 1;
-}
-
-PixelData* px_get_data(PixelHandle px) {
-    return px.group->chains[px.chain].data;
-}
-
-void px_set_color(PixelHandle px, Color color) {
-    px.group->chains[px.chain].data[px.index].color = color;
-}
-Color px_get_color(PixelHandle px) {
-    return px.group->chains[px.chain].data[px.index].color;
-}
-
-void px_set_position(PixelHandle px, float x, float y) {
-    px.group->chains[px.chain].data[px.index].x = x;
-    px.group->chains[px.chain].data[px.index].y = y;
-}
-
-void px_set_strip_positions(PixelHandle px, unsigned count, const float p1[2], const float p2[2]) {
-    float dx = (p2[0] - p1[0]) / count;
-    float dy = (p2[1] - p1[1]) / count;
-    for (unsigned i = 0; i <= count; i++) { // inclusive loop [0, count]
-        px.group->chains[px.chain].data[px.index].x = p1[0] + dx * i;
-        px.group->chains[px.chain].data[px.index].y = p1[1] + dy * i;
-
-        px.index++;
-
-        // wrap px index/chain
-        if (px.index >= px.group->chains[px.chain].count) {
-            px.index = 0;
-            px.chain++;
-            if (px.chain >= px.group->count) {
-                px.chain = 0;
-            }
-        }
-    }
-}
-void px_get_position(PixelHandle px, float* out_x, float* out_y) {
-    *out_x = px.group->chains[px.chain].data[px.index].x;
-    *out_y = px.group->chains[px.chain].data[px.index].y;
-}
-
-void px_next(PixelHandle* px) {
-    px->index++;
-
-    // wrap around index
-    if (px->index >= px->group->chains[px->chain].count) {
-        px->index = 0;
-        px->chain++;
-
-        // wrap around chain
-        if (px->chain >= px->group->count) {
-            px->chain = 0;
-        }
-    }
+void px_get_position(const PixelGroup* pxg, PixelIndex px, float* out_x, float* out_y) {
+    *out_x = pxg->positions[px][0];
+    *out_y = pxg->positions[px][1];
 }

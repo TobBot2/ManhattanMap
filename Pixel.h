@@ -4,63 +4,36 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-typedef uint16_t PixelIndex; // limit is small due to 5m limit of lights anyway
+#include "quickpix.h"
 
 typedef struct Color_t {
-    uint8_t x, r, g, b; // stored grb order for hardware reasons
+    uint8_t x, r, g, b; // ordered for hardware + padding reasons
 } Color;
-
-typedef struct PixelData_t {
-    float x, y; // in inches, relative to arbitrary point (columbus circle?)
-    Color color;
-} PixelData;
-
-// chain of pixels (e.g. an LED strip)
-typedef struct PixelChain_t {
-    PixelData* data;
-    PixelIndex count;
-} PixelChain;
 
 // group of multiple pixel chains where each chain is on its own data line
 typedef struct PixelGroup_t {
-    PixelChain* chains;
-    unsigned count;
+    float (*positions)[2]; // array of float[2] (x, y)
+    Color* colors;
+    PixelIndex count;
 } PixelGroup;
 
-// logical handle describing a particular pixel
-typedef struct PixelHandle_t {
-    PixelIndex index;
-    unsigned chain;
-    const PixelGroup* group;
-} PixelHandle;
-
-typedef Color (*PixelTransformFn)(PixelHandle, void*);
+typedef void (*PixelTransformFn)(const PixelGroup*, PixelIndex, void*);
 
 // COLOR
 
-uint32_t color_to_hardware_format(Color c);
 Color color_from(uint8_t r, uint8_t g, uint8_t b);
 Color color_mix(Color c1, Color c2, float mix); // mix [0, 1) = % contribution of c2 (remaining is c1)
 
 // PIXEL GROUP
 
-void pxg_init(PixelGroup* pxg);
-PixelChain* pxg_add_chain(PixelGroup* pxg, unsigned count);
+void pxg_init(PixelGroup* pxg, const Quickpix* quickpix);
 void pxg_apply(const PixelGroup* pxg, PixelTransformFn fn, void* aux); // apply function to each pixel in group
 
 // PIXEL DATA
 
-PixelHandle px_create_empty();
-void px_next(PixelHandle* px);
-int px_is_empty(PixelHandle px); // boolean return
-int px_compare(PixelHandle lhs, PixelHandle rhs); // cmp chain.index output -, 0, + if lhs <, =, > rhs
-float px_dist(PixelHandle px1, PixelHandle px2);
-int px_is_valid(PixelHandle px); // boolean return
-PixelData* px_get_data(PixelHandle px);
-void px_set_color(PixelHandle px, Color color);
-Color px_get_color(PixelHandle px);
-void px_set_position(PixelHandle px, float x, float y);
-void px_set_strip_positions(PixelHandle px, unsigned count, const float p1[2], const float p2[2]); // count is inclusive
-void px_get_position(PixelHandle px, float* out_x, float* out_y);
+Color px_get_color(const PixelGroup* pxg, PixelIndex px);
+void px_set_color(const PixelGroup* pxg, PixelIndex px, Color color);
+void px_get_position(const PixelGroup* pxg, PixelIndex px, float* out_x, float* out_y);
+void px_set_position(const PixelGroup* pxg, PixelIndex px, float x, float y);
 
 #endif //MANHATTANMAP_UTIL_H

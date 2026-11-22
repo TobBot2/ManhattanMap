@@ -10,10 +10,8 @@
 #include "pico/types.h"
 #include "ws2812.pio.h"
 
-// TODO: I should abstract away chhains for users of quickipx
-//  so that users just see an index assigned to each pixel.
-//  All pixels are stored contiguously in memory, with pointers
-//  to the start of each physical chain within the master array.
+// index into `uint32_t* pixels` array (negative = invalid)
+typedef int16_t PixelIndex;
 
 typedef struct QuickpixChain_t {
     // ws2812 stuff
@@ -21,30 +19,34 @@ typedef struct QuickpixChain_t {
     uint sm;
     uint offset;
 
-    // cool data
-    uint32_t* pixels;
-    uint count;
+    PixelIndex start_idx; // idx in pixels arr
+    PixelIndex pixels_count;
 } QuickpixChain;
 
 typedef struct Quickpix_t {
     QuickpixChain* chains;
-    unsigned count;
+    unsigned chains_count;
+
+    uint32_t* pixels;
+    PixelIndex pixels_count;
 } Quickpix;
 
 static void quickpix_init(Quickpix* quickpix) {
     quickpix->chains = NULL;
-    quickpix->count = 0;
+    quickpix->chains_count = 0;
 }
 
-static bool quickpix_add_chain(Quickpix* quickpix, uint pin, uint count) {
+static bool quickpix_add_chain(Quickpix* quickpix, uint pin, uint pixels_count) {
     // allocate new chain
-    quickpix->count++;
-    quickpix->chains = realloc(quickpix->chains, quickpix->count * sizeof(QuickpixChain));
-    QuickpixChain* chain = &quickpix->chains[quickpix->count - 1];
+    quickpix->chains_count++;
+    quickpix->chains = realloc(quickpix->chains, quickpix->chains_count * sizeof(QuickpixChain));
+    QuickpixChain* chain = &quickpix->chains[quickpix->chains_count - 1];
 
     // populate new chain data
-    chain->count = count;
-    chain->pixels = calloc(count, sizeof(uint32_t));
+    chain->start_idx = quickpix->pixels_count;
+    chain->pixels_count = pixels_count;
+    quickpix->pixels_count += pixels_count;
+    quickpix->pixels = realloc(quickpix->pixels, quickpix->pixels_count);
     if (!pio_claim_free_sm_and_add_program_for_gpio_range(
             &ws2812_program, &chain->pio, &chain->sm, &chain->offset, pin, 1, true)) {
         return false;
@@ -54,11 +56,15 @@ static bool quickpix_add_chain(Quickpix* quickpix, uint pin, uint count) {
     return true;
 }
 
+static void quickpix_set_px(const Quickpix* quickpix, PixelIndex idx, uint32_t data) {
+    quickpix->pixels[idx] = data;
+}
+
 static void quickpix_show(const Quickpix* quickpix) {
-    for (unsigned c = 0; c < quickpix->count; c++) {
+    for (unsigned c = 0; c < quickpix->chains_count; c++) {
         QuickpixChain* chain = &quickpix->chains[c];
-        for (uint i = 0; i < chain->count; i++) {
-            pio_sm_put_blocking(chain->pio, chain->sm, chain->pixels[i] << 8u);
+        for (PixelIndex i = 0; i < chain->pixels_count; i++) {
+            pio_sm_put_blocking(chain->pio, chain->sm, quickpix->pixels[chain->start_idx + i] << 8u);
         }
     }
     sleep_us(100); // ensure protocol latch (minimum 50 us)

@@ -1,6 +1,6 @@
 #include "config.h"
 
-#define COLOR(r, g, b) { 0x00, r, g, b }
+#define COLOR(red, green, blue) .r = red, .g = green, .b = blue
 
 // ******************************************************************************
 //                                CHAIN CONFIG
@@ -23,8 +23,8 @@ const ChainConfig CHAINS_CONFIG[] = {
 
 const PixelSegmentConfig PIXEL_SEGMENTS[] = {
     {
-        .begin = { .index = 0, .chain = 0, .group = NULL }, .begin_x = 0, .begin_y = 0,
-        .end = { .index = 20, .chain = 0, .group = NULL }, .end_x = 0, .end_y = 0
+        .begin = 0, .begin_x = 0, .begin_y = 0,
+        .end = 0, .end_x = 0, .end_y = 0
     },
     // TODO x however many segments...
 };
@@ -35,8 +35,8 @@ const PixelSegmentConfig PIXEL_SEGMENTS[] = {
 
 const TrainLineSegmentConfig TRAINLINE_SEGMENTS_1[] = {
     {
-        .begin = { .index = 0, .chain = 0, .group = NULL },
-        .end = { .index = 0, .chain = 0, .group = NULL }
+        .begin = 0,
+        .end = 0
     },
     // TODO all segments of the line...
 };
@@ -44,7 +44,7 @@ const TrainLineSegmentConfig TRAINLINE_SEGMENTS_1[] = {
 // TODO all TRAINLINES
 const TrainLineConfig TRAINLINES_CONFIG[] = {
     { // 1 line
-        .color = COLOR(0xEE, 0x35, 0x2E),
+        COLOR(0xEE, 0x35, 0x2E),
         .segments = TRAINLINE_SEGMENTS_1,
         .segments_count = sizeof(TRAINLINE_SEGMENTS_1) / sizeof(*TRAINLINE_SEGMENTS_1)
     },

@@ -10,21 +10,17 @@ pico_sdk_init()
 
 add_executable(ManhattanMap
         main.c
-        Pixel.h
-        Pixel.c
-        TrainLine.h
-        TrainLine.c
         DisplayMode.h
         DisplayMode.c
-        AvlTree.h
-        AvlTree.c
         Map.h
         Map.c
-        quickpix.h
-        Map.c
-        ManhattanLayout.h
+        TrainLine.h
+        TrainLine.c
+        Pixel.h
+        Pixel.c
         config.h
         Manhattan.c
+        quickpix.h
 )
 
 # generate .pio.h file

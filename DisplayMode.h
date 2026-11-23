@@ -1,6 +1,7 @@
 #ifndef MANHATTANMAP_DISPLAYMODE_H
 #define MANHATTANMAP_DISPLAYMODE_H
 
+#include "Map.h"
 #include "Pixel.h"
 #include "TrainLine.h"
 
@@ -59,18 +60,7 @@ typedef struct DisplayData_t {
 
 void dsp_next_preset(DisplayModeIndex* idx); // modifies to be next index (wraps)
 const DisplayData* dsp_get_preset(DisplayModeIndex idx); // returns ptr to static const arr
-void dsp_init_presets();
-
-// DISPLAY MODE FUNCTIONS
-
-void dsp_mode_solid(const PixelGroup* pxg, PixelIndex px, void* data_mode);
-void dsp_mode_train_line_colors(const PixelGroup* pxg, PixelIndex px, void* data_mode);
-void dsp_mode_wave(const PixelGroup* pxg, PixelIndex px, void* data_mode);
-void dsp_mode_wave_tick(void* data_mode, int64_t elapsed_us);
-void dsp_mode_pulse(const PixelGroup* pxg, PixelIndex px, void* data_mode);
-void dsp_mode_pulse_tick(void* data_mode, int64_t elapsed_us);
-void dsp_mode_simulate_trains(const PixelGroup* pxg, PixelIndex px, void* data_mode);
-void dsp_mode_simulate_trains_init(void* data_mode);
-void dsp_mode_simulate_trains_tick(const PixelGroup* pxg, void* data_mode, int64_t elapsed_us);
+void dsp_init_presets(const Map* map);
+void dsp_update_map(const Map* map, const DisplayData* data, int64_t frame_time_us);
 
 #endif //MANHATTANMAP_DISPLAYMODE_H

@@ -2,24 +2,32 @@
 
 #include <stdio.h>
 
-#include "config.h"
-#include "DisplayMode.h"
 #include "quickpix.h"
-#include "TrainLine.h"
+#include "config.h"
 
-static PixelGroup pixel_group;
+#include "DisplayMode.h"
 
-static TrainLine* train_lines;
-static unsigned train_lines_cnt;
-static PixelTrainLines pixel_train_lines;
+static void map_add_tl_segment(TrainLineIndex tl_idx, PixelIndex start, PixelIndex end, TrainLine* tls, const PixelTrainLines* pxtl) {
+    TrainLine* tl = &tls[tl_idx];
+    PixelIndex original_cnt = tl->pixels_count;
 
-static DisplayModeIndex display_mode_index;
+    if (start > end) return; // end must be after start
 
-void map_init(const Quickpix* quickpix) {
-    pxtl_init(&pixel_train_lines, &pixel_group);
+    // reserve space
+    unsigned extra_space = end - start + 1; // + 1 for inclusive range [start, end]
+    tl->pixels_count += extra_space;
+    tl->pixels = realloc(tl->pixels, tl->pixels_count * sizeof(*tl->pixels));
 
+    // populate space
+    for (PixelIndex i = 0; i < extra_space; i++) {
+        tl->pixels[original_cnt + i] = start + i;
+        pxtl_associate_line(pxtl, tl->pixels[original_cnt + i], tl_idx);
+    }
+}
+
+void map_init(Map* map, const Quickpix* quickpix) {
     // pixels
-    pxg_init(&pixel_group, quickpix);
+    pxg_init(map->pxg, quickpix);
     for (unsigned s = 0; s < CONFIG.pixel_segments_count; s++) {
         const PixelSegmentConfig* seg = &CONFIG.pixel_segments[s];
         float x = seg->begin_x;
@@ -27,73 +35,62 @@ void map_init(const Quickpix* quickpix) {
         float dx = (seg->end_x - seg->begin_x) / (seg->end - seg->begin);
         float dy = (seg->end_y - seg->begin_y) / (seg->end - seg->begin);
         for (PixelIndex p = 0; p <= seg->end; p++) {  // inclusive with end
-            px_set_position(&pixel_group, p, x, y);
+            px_set_position(map->pxg, p, x, y);
             x += dx;
             y += dy;
         }
     }
 
+    // pixel-trainlines
+    pxtl_init(map->pxtl, map->pxg, CONFIG.trainlines_count);
+
     // train lines
-    train_lines = calloc(CONFIG.trainlines_count, sizeof(TrainLine));
+    map->tls_count = CONFIG.trainlines_count;
+    map->tls = calloc(map->tls_count, sizeof(TrainLine));
     for (unsigned i = 0; i < CONFIG.trainlines_count; i++) {
         const TrainLineConfig* tl_config = &CONFIG.trainline_configs[i];
         Color color = color_from(tl_config->r, tl_config->g, tl_config->b);
-        tl_init(&train_lines[i], color);
+        tl_init(&map->tls[i], color);
         const TrainLineSegmentConfig* seg_end = tl_config->segments + CONFIG.trainlines_count;
         for (const TrainLineSegmentConfig* seg = tl_config->segments; seg != seg_end; seg++) {
-            tl_add_segment(i, seg->begin, seg->end, train_lines, &pixel_train_lines);
+            map_add_tl_segment(i, seg->begin, seg->end, map->tls, map->pxtl);
         }
     }
 }
 
-void map_update(int64_t frame_time_us) {
-    const DisplayData* data = dsp_get_preset(display_mode_index);
-    switch (data->mode) {
-        case DISPLAY_MODE_SOLID: {
-            pxg_apply(&pixel_group, dsp_mode_solid, (void*)data);
-            break;
-        }
-        case DISPLAY_MODE_TRAIN_LINE_COLORS: {
-            pxg_apply(&pixel_group, dsp_mode_train_line_colors, (void*)data);
-            break;
-        }
-        case DISPLAY_MODE_WAVE: {
-            pxg_apply(&pixel_group, dsp_mode_wave, (void*)data);
-            dsp_mode_wave_tick((void*)data, frame_time_us);
-            break;
-        }
-        case DISPLAY_MODE_SIMULATE_TRAINS: {
-            pxg_apply(&pixel_group, dsp_mode_simulate_trains, (void*)data);
-            dsp_mode_simulate_trains_tick(&pixel_group, (void*)data, frame_time_us);
-            break;
-        }
-        case DISPLAY_MODE_PULSE: {
-            pxg_apply(&pixel_group, dsp_mode_pulse, (void*)data);
-            dsp_mode_pulse_tick((void*)data, frame_time_us);
-            break;
-        }
+void map_clear(const Map* map) {
+    for (PixelIndex px = 0; px < map->pxg->count; px++) {
+        map->pxg->colors[px] = (Color){ 0 };
     }
 }
 
-void map_clear() {
-    for (PixelIndex px = 0; px < pixel_group.count; px++) {
-        pixel_group.colors[px] = (Color){ 0 };
+static void add_unique(PixelIndex* list, unsigned* n, PixelIndex v, PixelIndex prev) {
+    for (unsigned i = 0; i < *n; i++)
+        if (list[i] == v || v == prev) return; // already present
+    list[(*n)++] = v;
+}
+
+PixelIndex map_get_random_next_neighbor(const Map* map, PixelIndex pixel, PixelIndex prev) {
+    PixelIndex candidates[64];
+    unsigned n = 0;
+
+    // visit only the lines this pixel belongs to (set bits in the mask)
+    for (uint32_t m = map->pxtl->tl_masks[pixel]; m; m &= m - 1) {
+        const TrainLine* tl = &map->tls[__builtin_ctz(m)]; // mask to tl_index (via ctz) to tl (via arr lookup)
+
+        // linear search for pixel index in trainline
+        for (unsigned i = 0; i < tl->pixels_count; i++) {
+            if (tl->pixels[i] != pixel) continue;
+
+            // found pixel index, add candidate if in bounds
+            if (i > 0) add_unique(candidates, &n, tl->pixels[i - 1], prev);
+            if (i + 1 < tl->pixels_count) add_unique(candidates, &n, tl->pixels[i + 1], prev);
+            break; // found this pixel in this line
+        }
     }
-}
 
-void map_next_display_mode() {
-    dsp_next_preset(&display_mode_index);
-}
+    // no valid neighbors
+    if (n == 0) return -1;
 
-const PixelGroup* map_get_pxg() {
-    return &pixel_group;
-}
-
-const PixelTrainLines* map_get_pxtl_map() {
-    return &pixel_train_lines;
-}
-
-void map_get_train_lines(const TrainLine** tl_out, unsigned* tl_cnt) {
-    *tl_out = train_lines;
-    *tl_cnt = train_lines_cnt;
+    return candidates[rand() % n]; // pick from candidates at random
 }

@@ -2,7 +2,6 @@
 #define MANHATTANMAP_UTIL_H
 
 #include <stdint.h>
-#include <stdlib.h>
 
 #include "quickpix.h"
 

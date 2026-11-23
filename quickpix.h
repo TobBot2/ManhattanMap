@@ -56,10 +56,6 @@ static bool quickpix_add_chain(Quickpix* quickpix, uint pin, uint pixels_count) 
     return true;
 }
 
-static void quickpix_set_px(const Quickpix* quickpix, PixelIndex idx, uint32_t data) {
-    quickpix->pixels[idx] = data;
-}
-
 static void quickpix_show(const Quickpix* quickpix) {
     for (unsigned c = 0; c < quickpix->chains_count; c++) {
         QuickpixChain* chain = &quickpix->chains[c];

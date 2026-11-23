@@ -43,7 +43,7 @@ const TrainLineSegmentConfig TRAINLINE_SEGMENTS_1[] = {
 
 // TODO all TRAINLINES
 const TrainLineConfig TRAINLINES_CONFIG[] = {
-    { // 1 line
+    { // [0] = 1 line
         COLOR(0xEE, 0x35, 0x2E),
         .segments = TRAINLINE_SEGMENTS_1,
         .segments_count = sizeof(TRAINLINE_SEGMENTS_1) / sizeof(*TRAINLINE_SEGMENTS_1)

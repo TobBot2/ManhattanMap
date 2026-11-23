@@ -1,20 +1,50 @@
 # Manhattan Map Project
 
-This project is for my wooden map of manhattan
+This project is for my wooden map of manhattan with individually addressable LEDs running along the subway lines.
+
+This program runs on a raspberry pi pico to control the LEDs. A button input changes between display modes, e.g.
+- solid colors
+- wave pattern
+- pulse pattern
+- simulated trains
+
+The code abstracts concepts in the following hierarchy (lower items know nothing about higher items):
+- DisplayMode
+- Map
+- TrainLine
+- Pixel
+- config
+- quickpix
+
+DisplayMode serves as an overall controller of the colors based on its own internal state.
+
+Map serves to represent the map of the train system by storing data on pixel positions in x-y space, which pixels correspond to which train lines, and which pixels are intersections where multiple train lines connect. It mostly handles connecting TrainLine and Pixel concepts together, allowing for navigation of the network and control over the pixels based on the map.
+
+TrainLine keeps track of what pixels belong to a train line, as well as the reverse (what train lines belong to each pixel).
+
+Pixel stores the abstract idea of a pixel in the context of this project (a LED with color at a position in space). In theory this could be reused for non-map related projects.
+
+config is just configuration which has minimal dependencies (code that reads the config should parse values from primitives like ints and floats).
+
+quickpix is a small wrapper around the hardware functions ws2812.pio provides. It simplifies the interface so it easily corresponds to physical layout (multiple chains of pixels), while also keeping it easy to access any given pixel by a single integer ID.
 
 ## Configuration
 
-TODO: Change lights configuration by setting config file and compiling the config file into a header file or something to be included.
+Define a map configuration by setting `CONFIG` (extern variable in `config.h`). Example included with `Manhattan.c`.
 
 ### Wiring
 
-Button pin is defined in `main.c`. Default pin 3.
+Customizable with `CONFIG` variable (see above).
 
-Data pins for LEDs are set in `ManhattanMap.c` via function call. Default pins 6 & 7
+Suggested wiring:
+- button pin 3,
+- ws2812b pins starting at pin 6 and going up as needed (remember to keep data lines < 5 meters)
 
 I used a resistor on all data lines as well as a pull up resistor for the button (I think the rpi pico has one built in anyway though).
 
 External power supply should have positive connected in parallel to both LED strips, and the ground should be connect to the LED strips and rpi pico in parallel. Rpi pico can be powered by up to 5.5 V, so powering the pico itself with the 5 V power supply should work (though maybe a capacitor or something would be good for voltage spikes).
+
+ENSURE CORRECT VOLTAGE IS USED!! Please do not fry your LEDs.
 
 ## Resources
 

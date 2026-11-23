@@ -2,10 +2,6 @@
 
 #include <math.h>
 
-#include "Pixel.h"
-#include "TrainLine.h"
-#include "Map.h"
-
 // array of all display presets, accessible via index
 static const DisplayData DISPLAY_MODE_PRESETS[] = {
     (DisplayData){
@@ -37,12 +33,22 @@ static const DisplayData DISPLAY_MODE_PRESETS[] = {
         .simulate = {
             .count = 8,
             .speed = .02f,
-            .trains = (SimulatedTrain[8]){}
+            .trains = (SimulatedTrain[8]) { 0 }
         }
     }
 };
 
 static const DisplayModeIndex DISPLAY_MODE_PRESETS_CNT = sizeof(DISPLAY_MODE_PRESETS) / sizeof(DisplayData);
+
+static void dsp_mode_solid(const PixelGroup* pxg, PixelIndex px, void* data_mode);
+static void dsp_mode_train_line_colors(const PixelGroup* pxg, PixelIndex px, void* data_mode);
+static void dsp_mode_wave(const PixelGroup* pxg, PixelIndex px, void* data_mode);
+static void dsp_mode_wave_tick(void* data_mode, int64_t elapsed_us);
+static void dsp_mode_pulse(const PixelGroup* pxg, PixelIndex px, void* data_mode);
+static void dsp_mode_pulse_tick(void* data_mode, int64_t elapsed_us);
+static void dsp_mode_simulate_trains(const PixelGroup* pxg, PixelIndex px, void* data_mode);
+static void dsp_mode_simulate_trains_init(const Map* map, void* data_mode);
+static void dsp_mode_simulate_trains_tick(const Map* map, void* data_mode, int64_t elapsed_us);
 
 static float dist2d(float x1, float y1, float x2, float y2) {
     float dx = x2 - x1;
@@ -58,7 +64,7 @@ const DisplayData* dsp_get_preset(DisplayModeIndex idx) {
     return &DISPLAY_MODE_PRESETS[idx];
 }
 
-void dsp_init_presets() {
+void dsp_init_presets(const Map* map) {
     for (unsigned i = 0; i < DISPLAY_MODE_PRESETS_CNT; i++) {
         DisplayData data = (DisplayData)DISPLAY_MODE_PRESETS[i];
         switch (data.mode) {
@@ -68,8 +74,36 @@ void dsp_init_presets() {
             case DISPLAY_MODE_WAVE:
                 break; // most don't need any further initialization than the map being ready...
             case DISPLAY_MODE_SIMULATE_TRAINS: {
-                dsp_mode_simulate_trains_init(&data);
+                dsp_mode_simulate_trains_init(map, &data);
             }
+        }
+    }
+}
+
+void dsp_update_map(const Map* map, const DisplayData* data, int64_t frame_time_us) {
+    switch (data->mode) {
+        case DISPLAY_MODE_SOLID: {
+            pxg_apply(map->pxg, dsp_mode_solid, (void*)data);
+            break;
+        }
+        case DISPLAY_MODE_TRAIN_LINE_COLORS: {
+            pxg_apply(map->pxg, dsp_mode_train_line_colors, (void*)data);
+            break;
+        }
+        case DISPLAY_MODE_WAVE: {
+            pxg_apply(map->pxg, dsp_mode_wave, (void*)data);
+            dsp_mode_wave_tick((void*)data, frame_time_us);
+            break;
+        }
+        case DISPLAY_MODE_SIMULATE_TRAINS: {
+            pxg_apply(map->pxg, dsp_mode_simulate_trains, (void*)data);
+            dsp_mode_simulate_trains_tick(map, (void*)data, frame_time_us);
+            break;
+        }
+        case DISPLAY_MODE_PULSE: {
+            pxg_apply(map->pxg, dsp_mode_pulse, (void*)data);
+            dsp_mode_pulse_tick((void*)data, frame_time_us);
+            break;
         }
     }
 }
@@ -78,12 +112,12 @@ void dsp_init_presets() {
 //                              DISPLAY MODE FUNCS
 // ******************************************************************************
 
-void dsp_mode_solid(const PixelGroup* pxg, PixelIndex px, void* data_mode) {
+static void dsp_mode_solid(const PixelGroup* pxg, PixelIndex px, void* data_mode) {
     DisplayData* data = (DisplayData*)data_mode;
     px_set_color(pxg, px, data->color);
 }
 
-void dsp_mode_train_line_colors(const PixelGroup* pxg, PixelIndex px, void* data_mode) {
+static void dsp_mode_train_line_colors(const PixelGroup* pxg, PixelIndex px, void* data_mode) {
     DisplayData* data = (DisplayData*)data_mode;
     Color color = {};
     unsigned count = 0;
@@ -106,7 +140,7 @@ void dsp_mode_train_line_colors(const PixelGroup* pxg, PixelIndex px, void* data
     px_set_color(pxg, px, color);
 }
 
-void dsp_mode_wave(const PixelGroup* pxg, PixelIndex px, void* data_mode) {
+static void dsp_mode_wave(const PixelGroup* pxg, PixelIndex px, void* data_mode) {
     DisplayData* data = (DisplayData*)data_mode;
 
     const float wave_length = 10.f;
@@ -127,12 +161,12 @@ void dsp_mode_wave(const PixelGroup* pxg, PixelIndex px, void* data_mode) {
     px_set_color(pxg, px, color_mix(data->wave.color1, data->wave.color2, mix));
 }
 
-void dsp_mode_wave_tick(void* data_mode, int64_t elapsed_us) {
+static void dsp_mode_wave_tick(void* data_mode, int64_t elapsed_us) {
     DisplayData* data = (DisplayData*)data_mode;
     data->wave.elapsed_ms += elapsed_us / 1000;
 }
 
-void dsp_mode_pulse(const PixelGroup* pxg, PixelIndex px, void* data_mode) {
+static void dsp_mode_pulse(const PixelGroup* pxg, PixelIndex px, void* data_mode) {
     DisplayData* data = (DisplayData*)data_mode;
 
     const float pulse_length = 10.f;
@@ -153,12 +187,12 @@ void dsp_mode_pulse(const PixelGroup* pxg, PixelIndex px, void* data_mode) {
     px_set_color(pxg, px, color_mix(data->pulse.color, (Color){ 0, 0, 0, 0 }, mix));
 }
 
-void dsp_mode_pulse_tick(void* data_mode, int64_t elapsed_us) {
+static void dsp_mode_pulse_tick(void* data_mode, int64_t elapsed_us) {
     DisplayData* data = (DisplayData*)data_mode;
     data->pulse.elapsed_ms += elapsed_us / 1000;
 }
 
-void dsp_mode_simulate_trains(const PixelGroup* pxg, PixelIndex px, void* data_mode) {
+static void dsp_mode_simulate_trains(const PixelGroup* pxg, PixelIndex px, void* data_mode) {
     DisplayData* data = (DisplayData*)data_mode;
 
     unsigned r = 0, g = 0, b = 0;
@@ -189,12 +223,9 @@ void dsp_mode_simulate_trains(const PixelGroup* pxg, PixelIndex px, void* data_m
 
 }
 
-SimulatedTrain dsp_mode_simulate_trains_begin_random_train() {
+SimulatedTrain dsp_mode_simulate_trains_begin_random_train(const Map* map) {
     // get random train line
-    const TrainLine* tls = NULL;
-    unsigned tls_cnt;
-    map_get_train_lines(&tls, &tls_cnt);
-    const TrainLine* tl = &tls[rand() % tls_cnt];
+    const TrainLine* tl = &map->tls[rand() % map->tls_count];
 
     // begin on a random end of train line
     PixelIndex begin_px;
@@ -212,16 +243,16 @@ SimulatedTrain dsp_mode_simulate_trains_begin_random_train() {
     };
 }
 
-void dsp_mode_simulate_trains_init(void* data_mode) {
+static void dsp_mode_simulate_trains_init(const Map* map, void* data_mode) {
     DisplayData* data = (DisplayData*)data_mode;
 
     for (unsigned t = 0; t < data->simulate.count; t++) {
-        data->simulate.trains[t] = dsp_mode_simulate_trains_begin_random_train();
+        data->simulate.trains[t] = dsp_mode_simulate_trains_begin_random_train(map);
     }
 
 }
 
-void dsp_mode_simulate_trains_tick(const PixelGroup* pxg, void* data_mode, int64_t elapsed_us) {
+static void dsp_mode_simulate_trains_tick(const Map* map, void* data_mode, int64_t elapsed_us) {
     DisplayData* data = (DisplayData*)data_mode;
 
     float px1_x, px1_y;
@@ -230,22 +261,22 @@ void dsp_mode_simulate_trains_tick(const PixelGroup* pxg, void* data_mode, int64
     for (unsigned t = 0; t < data->simulate.count; t++) {
         SimulatedTrain* train = &data->simulate.trains[t];
 
-        px_get_position(pxg, train->pos, &px1_x, &px1_y);
-        px_get_position(pxg, train->prev, &px2_x, &px2_y);
+        px_get_position(map->pxg, train->pos, &px1_x, &px1_y);
+        px_get_position(map->pxg, train->prev, &px2_x, &px2_y);
         float dist = dist2d(px1_x, px1_y, px2_x, px2_y);
         train->interp += data->simulate.speed * elapsed_us / 1000000;
 
         if (train->interp >= 1.f) {
             float overshoot = (1 - train->interp) * dist;
 
-            PixelIndex next = tl_get_random_next_neighbor(train->pos, train->prev, data->tl_colors.pxtl, data->tl_colors.tls);
+            PixelIndex next = map_get_random_next_neighbor(map, train->pos, train->prev);
             if (next < 0) { // no next found... restart train
-                *train = dsp_mode_simulate_trains_begin_random_train();
+                *train = dsp_mode_simulate_trains_begin_random_train(map);
             }
 
             // calc new distance
-            px_get_position(pxg, train->pos, &px1_x, &px1_y);
-            px_get_position(pxg, train->prev, &px2_x, &px2_y);
+            px_get_position(map->pxg, train->pos, &px1_x, &px1_y);
+            px_get_position(map->pxg, train->prev, &px2_x, &px2_y);
             dist = dist2d(px1_x, px1_y, px2_x, px2_y);
 
             train->prev = train->pos;

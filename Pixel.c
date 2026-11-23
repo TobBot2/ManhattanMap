@@ -2,11 +2,6 @@
 
 #include <math.h>
 
-uint32_t color_to_hardware_format(Color c) {
-    // store as grb (Color is stored as grb in memory already)
-    return (*(uint32_t*)&c); // remove trailing garbage data (Color is 24 bits)
-}
-
 Color color_from(uint8_t r, uint8_t g, uint8_t b) {
     return (Color){0, r, g, b};
 }

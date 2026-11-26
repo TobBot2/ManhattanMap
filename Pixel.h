@@ -5,8 +5,10 @@
 
 #include "quickpix.h"
 
+#define color_from_rgb(r, g, b) ((Color){ 0x00, b, g, r })
+
 typedef struct Color_t {
-    uint8_t x, r, g, b; // ordered for hardware + padding reasons
+    uint8_t x, b, g, r; // ordered for hardware + padding reasons
 } Color;
 
 // group of multiple pixel chains where each chain is on its own data line
@@ -20,7 +22,7 @@ typedef void (*PixelTransformFn)(const PixelGroup*, PixelIndex, void*);
 
 // COLOR
 
-Color color_from(uint8_t r, uint8_t g, uint8_t b);
+// Color color_from(uint8_t r, uint8_t g, uint8_t b);
 Color color_mix(Color c1, Color c2, float mix); // mix [0, 1) = % contribution of c2 (remaining is c1)
 
 // PIXEL GROUP

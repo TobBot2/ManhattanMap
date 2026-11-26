@@ -3,10 +3,10 @@
 #include <math.h>
 
 // array of all display presets, accessible via index
-static const DisplayData DISPLAY_MODE_PRESETS[] = {
+static DisplayData DISPLAY_MODE_PRESETS[] = {
     (DisplayData){
         .mode = DISPLAY_MODE_SOLID,
-        .color = (Color){ 0xff, 0xff, 0xff }
+        .color = color_from_rgb(0x00, 0x80, 0xff)
     },
     (DisplayData){
         .mode = DISPLAY_MODE_TRAIN_LINE_COLORS,
@@ -14,25 +14,27 @@ static const DisplayData DISPLAY_MODE_PRESETS[] = {
     (DisplayData){
         .mode = DISPLAY_MODE_WAVE,
         .wave = {
-            .color1 = (Color) { 0xff, 0xff, 0xff },
-            .color2 = (Color) { 0x00, 0x00, 0x00 },
+            .color1 = color_from_rgb(0xff, 0xff, 0xff),
+            .color2 = color_from_rgb(0x00, 0x00, 0x00),
             .dir_x = 0, .dir_y = -1, // south
-            .speed = 1.8f
+            .speed = .0018f,
+            .elapsed_ms = 0.f
         }
     },
     (DisplayData){
         .mode = DISPLAY_MODE_PULSE,
         .pulse = {
-            .color = (Color) { 0xff, 0xff, 0xff },
+            .color = color_from_rgb(0xff, 0xff, 0xff),
             .x = 0, .y = 0,
-            .speed = 1.8f
+            .speed = .0018f,
+            .elapsed_ms = 0.f
         }
     },
     (DisplayData){
         .mode = DISPLAY_MODE_SIMULATE_TRAINS,
         .simulate = {
             .count = 8,
-            .speed = .02f,
+            .speed = .00002f,
             .trains = (SimulatedTrain[8]) { 0 }
         }
     }
@@ -42,6 +44,7 @@ static const DisplayModeIndex DISPLAY_MODE_PRESETS_CNT = sizeof(DISPLAY_MODE_PRE
 
 static void dsp_mode_solid(const PixelGroup* pxg, PixelIndex px, void* data_mode);
 static void dsp_mode_train_line_colors(const PixelGroup* pxg, PixelIndex px, void* data_mode);
+static void dsp_mode_train_line_colors_init(const Map* map, void* data_mode);
 static void dsp_mode_wave(const PixelGroup* pxg, PixelIndex px, void* data_mode);
 static void dsp_mode_wave_tick(void* data_mode, int64_t elapsed_us);
 static void dsp_mode_pulse(const PixelGroup* pxg, PixelIndex px, void* data_mode);
@@ -66,16 +69,18 @@ const DisplayData* dsp_get_preset(DisplayModeIndex idx) {
 
 void dsp_init_presets(const Map* map) {
     for (unsigned i = 0; i < DISPLAY_MODE_PRESETS_CNT; i++) {
-        DisplayData data = (DisplayData)DISPLAY_MODE_PRESETS[i];
-        switch (data.mode) {
-            case DISPLAY_MODE_SOLID:
-            case DISPLAY_MODE_TRAIN_LINE_COLORS:
-            case DISPLAY_MODE_PULSE:
-            case DISPLAY_MODE_WAVE:
-                break; // most don't need any further initialization than the map being ready...
-            case DISPLAY_MODE_SIMULATE_TRAINS: {
-                dsp_mode_simulate_trains_init(map, &data);
+        DisplayData* data = (DisplayData*)&DISPLAY_MODE_PRESETS[i];
+        switch (data->mode) {
+            case DISPLAY_MODE_TRAIN_LINE_COLORS: {
+                dsp_mode_train_line_colors_init(map, data);
+                break;
             }
+            case DISPLAY_MODE_SIMULATE_TRAINS: {
+                dsp_mode_simulate_trains_init(map, data);
+                break;
+            }
+            default:
+                break; // most display modes don't need initialization...
         }
     }
 }
@@ -83,25 +88,25 @@ void dsp_init_presets(const Map* map) {
 void dsp_update_map(const Map* map, const DisplayData* data, int64_t frame_time_us) {
     switch (data->mode) {
         case DISPLAY_MODE_SOLID: {
-            pxg_apply(map->pxg, dsp_mode_solid, (void*)data);
+            pxg_apply(&map->pxg, dsp_mode_solid, (void*)data);
             break;
         }
         case DISPLAY_MODE_TRAIN_LINE_COLORS: {
-            pxg_apply(map->pxg, dsp_mode_train_line_colors, (void*)data);
+            pxg_apply(&map->pxg, dsp_mode_train_line_colors, (void*)data);
             break;
         }
         case DISPLAY_MODE_WAVE: {
-            pxg_apply(map->pxg, dsp_mode_wave, (void*)data);
+            pxg_apply(&map->pxg, dsp_mode_wave, (void*)data);
             dsp_mode_wave_tick((void*)data, frame_time_us);
             break;
         }
         case DISPLAY_MODE_SIMULATE_TRAINS: {
-            pxg_apply(map->pxg, dsp_mode_simulate_trains, (void*)data);
+            pxg_apply(&map->pxg, dsp_mode_simulate_trains, (void*)data);
             dsp_mode_simulate_trains_tick(map, (void*)data, frame_time_us);
             break;
         }
         case DISPLAY_MODE_PULSE: {
-            pxg_apply(map->pxg, dsp_mode_pulse, (void*)data);
+            pxg_apply(&map->pxg, dsp_mode_pulse, (void*)data);
             dsp_mode_pulse_tick((void*)data, frame_time_us);
             break;
         }
@@ -119,25 +124,36 @@ static void dsp_mode_solid(const PixelGroup* pxg, PixelIndex px, void* data_mode
 
 static void dsp_mode_train_line_colors(const PixelGroup* pxg, PixelIndex px, void* data_mode) {
     DisplayData* data = (DisplayData*)data_mode;
-    Color color = {};
+    unsigned r = 0, g = 0, b = 0;
     unsigned count = 0;
     for (uint32_t m = data->tl_colors.pxtl->tl_masks[px]; m; m &= m - 1) {
         const TrainLine* tl = &data->tl_colors.tls[__builtin_ctz(m)]; // mask to tl_index to tl
-        color.r += tl->color.r;
-        color.g += tl->color.g;
-        color.b += tl->color.b;
+        r += tl->color.r;
+        g += tl->color.g;
+        b += tl->color.b;
         count++;
     }
 
     if (count == 0) {
-        px_set_color(pxg, px, (Color){ 0 });
+        px_set_color(pxg, px, color_from_rgb(0, 0, 0));
         return;
     }
 
-    color.r /= count;
-    color.g /= count;
-    color.b /= count;
-    px_set_color(pxg, px, color);
+    px_set_color(pxg, px, color_from_rgb(r / count, g / count, b / count));
+}
+
+static void dsp_mode_train_line_colors_init(const Map* map, void* data_mode) {
+    DisplayData* data = (DisplayData*)data_mode;
+    data->tl_colors.pxtl = &map->pxtl;
+    data->tl_colors.tls = map->tls;
+
+    printf("dsp:\n");
+    printf("map->pxtl = %p\n", &map->pxtl);
+    printf("data->pxtl = %p\n", dsp_get_preset(1)->tl_colors.pxtl);
+
+    printf("map->tls = %p\n", &map->tls);
+    printf("data->tls = %p\n", dsp_get_preset(1)->tl_colors.tls);
+
 }
 
 static void dsp_mode_wave(const PixelGroup* pxg, PixelIndex px, void* data_mode) {
@@ -151,12 +167,10 @@ static void dsp_mode_wave(const PixelGroup* pxg, PixelIndex px, void* data_mode)
     float distance = px_x * data->wave.dir_x + px_y + data->wave.dir_y; // dot product
 
     // get mix between color1 and color2
-    float offset = data->wave.elapsed_ms / 1000.f * data->wave.speed;
+    float offset = data->wave.elapsed_ms * data->wave.speed;
     float mix = (distance + offset) / wave_length; // normalize
-    while (mix >= 1.f) mix -= 1.f; // clamp [0, 1)
-    while (mix < 0.f)  mix += 1.f;
-    if (mix > .5f) mix = 1.f - mix;
-    mix *= 2.f;
+    mix -= floorf(mix); // clamp [0, 1)
+    if (mix >= 1.f) mix = 0.f;
 
     px_set_color(pxg, px, color_mix(data->wave.color1, data->wave.color2, mix));
 }
@@ -177,12 +191,10 @@ static void dsp_mode_pulse(const PixelGroup* pxg, PixelIndex px, void* data_mode
     float b = px_y - data->pulse.y;
     float distance = sqrt(a*a + b*b);
 
-    float offset = data->pulse.elapsed_ms / 1000.f * data->pulse.speed;
+    float offset = data->pulse.elapsed_ms * data->pulse.speed;
     float mix = (distance + offset) / pulse_length; // normalize
-    while (mix >= 1.f) mix -= 1.f;
-    while (mix < 0.f)  mix += 1.f;
-    if (mix > .5f) mix = 1.f - mix;
-    mix *= 2.f;
+    mix -= floorf(mix); // clamp [0, 1)
+    if (mix >= 1.f) mix = 0.f;
 
     px_set_color(pxg, px, color_mix(data->pulse.color, (Color){ 0, 0, 0, 0 }, mix));
 }
@@ -199,15 +211,15 @@ static void dsp_mode_simulate_trains(const PixelGroup* pxg, PixelIndex px, void*
     unsigned count = 0;
 
     for (unsigned t = 0; t < data->simulate.count; t++) {
-        if (px != data->simulate.trains[t].pos && px != data->simulate.trains[t].prev) {
+        if (px != data->simulate.trains[t].curr && px != data->simulate.trains[t].prev) {
             continue;
         }
 
         Color c;
-        if (px == data->simulate.trains[t].pos) {
-            c = color_mix((Color) { 0 }, data->simulate.trains[t].color, data->simulate.trains[t].interp);
+        if (px == data->simulate.trains[t].curr) {
+            c = color_mix(color_from_rgb(0, 0, 0), data->simulate.trains[t].color, data->simulate.trains[t].interp);
         } else {
-            c = color_mix(data->simulate.trains[t].color, (Color) { 0 }, data->simulate.trains[t].interp);
+            c = color_mix(data->simulate.trains[t].color, color_from_rgb(0, 0, 0), data->simulate.trains[t].interp);
         }
         r += c.r;
         g += c.g;
@@ -216,9 +228,9 @@ static void dsp_mode_simulate_trains(const PixelGroup* pxg, PixelIndex px, void*
     }
 
     if (count == 0) {
-        px_set_color(pxg, px, (Color){ 0 });
+        px_set_color(pxg, px, color_from_rgb(0, 0, 0));
     } else {
-        px_set_color(pxg, px, color_from(r / count, g / count, b / count));
+        px_set_color(pxg, px, color_from_rgb(r / count, g / count, b / count));
     }
 
 }
@@ -237,9 +249,9 @@ SimulatedTrain dsp_mode_simulate_trains_begin_random_train(const Map* map) {
 
     return (SimulatedTrain) {
         .interp = 0.f,
-        .pos = begin_px,
+        .curr = begin_px,
         .prev = begin_px, // prev = pos -> can go in either dir (but only one valid dir exists)
-        .color = color_from(255, 255, 255)
+        .color = color_from_rgb(255, 255, 255)
     };
 }
 
@@ -261,26 +273,26 @@ static void dsp_mode_simulate_trains_tick(const Map* map, void* data_mode, int64
     for (unsigned t = 0; t < data->simulate.count; t++) {
         SimulatedTrain* train = &data->simulate.trains[t];
 
-        px_get_position(map->pxg, train->pos, &px1_x, &px1_y);
-        px_get_position(map->pxg, train->prev, &px2_x, &px2_y);
+        px_get_position(&map->pxg, train->curr, &px1_x, &px1_y);
+        px_get_position(&map->pxg, train->prev, &px2_x, &px2_y);
         float dist = dist2d(px1_x, px1_y, px2_x, px2_y);
-        train->interp += data->simulate.speed * elapsed_us / 1000000;
+        train->interp += data->simulate.speed * elapsed_us / 1000000 / dist;
 
         if (train->interp >= 1.f) {
             float overshoot = (1 - train->interp) * dist;
 
-            PixelIndex next = map_get_random_next_neighbor(map, train->pos, train->prev);
+            PixelIndex next = map_get_random_next_neighbor(map, train->curr, train->prev);
             if (next < 0) { // no next found... restart train
                 *train = dsp_mode_simulate_trains_begin_random_train(map);
             }
 
             // calc new distance
-            px_get_position(map->pxg, train->pos, &px1_x, &px1_y);
-            px_get_position(map->pxg, train->prev, &px2_x, &px2_y);
+            px_get_position(&map->pxg, train->curr, &px1_x, &px1_y);
+            px_get_position(&map->pxg, train->prev, &px2_x, &px2_y);
             dist = dist2d(px1_x, px1_y, px2_x, px2_y);
 
-            train->prev = train->pos;
-            train->pos = next;
+            train->prev = train->curr;
+            train->curr = next;
             train->interp = overshoot / dist;
         }
     }

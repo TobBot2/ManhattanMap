@@ -8,6 +8,8 @@ This program runs on a raspberry pi pico to control the LEDs. A button input cha
 - pulse pattern
 - simulated trains
 
+### Implementation
+
 The code abstracts concepts in the following hierarchy (lower items know nothing about higher items):
 - DisplayMode
 - Map
@@ -27,6 +29,16 @@ Pixel stores the abstract idea of a pixel in the context of this project (a LED 
 config is just configuration which has minimal dependencies (code that reads the config should parse values from primitives like ints and floats).
 
 quickpix is a small wrapper around the hardware functions ws2812.pio provides. It simplifies the interface so it easily corresponds to physical layout (multiple chains of pixels), while also keeping it easy to access any given pixel by a single integer ID.
+
+### Limitations/TODO
+
+There are 1000 things to do still before this is a fully robust project, but some major things I wanted to do next that I don't have time to do include...
+- Utilize hardware efficiencies better (DMA, render buffer, multicore processing)
+- Better error handling/asserting valid configurations as well as debugging support.
+- Automatic switching between small and large maps (change some internal implementation depending on number of pixels, train lines, etc.)
+- Streamline the API to better reflect how the physical LEDs look/connect vs functions to control them.
+- Restructure configs to be .yaml format. Parsed during build into a source file which gets read into source files to build module-specific config structs to pass into init functions.
+- And of course much more...
 
 ## Configuration
 

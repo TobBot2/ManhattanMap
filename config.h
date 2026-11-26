@@ -1,27 +1,25 @@
 #ifndef MANHATTANMAP_CONFIG_H
 #define MANHATTANMAP_CONFIG_H
 
-#include "quickpix.h"
-
 typedef struct PixelSegmentConfig_t {
-    PixelIndex begin;
+    unsigned begin;
     float begin_x, begin_y;
-    PixelIndex end; // inclusive
+    unsigned end; // inclusive
     float end_x, end_y;
 } PixelSegmentConfig;
 
 typedef struct ChainConfig_t {
     int pin;
-    PixelIndex leds_count;
+    unsigned leds_count;
 } ChainConfig;
 
 typedef struct TrainLineSegmentConfig_t {
-    PixelIndex begin;
-    PixelIndex end; // inclusive
+    unsigned begin;
+    unsigned end; // inclusive
 } TrainLineSegmentConfig;
 
 typedef struct TrainLineConfig_t {
-    uint8_t r, g, b;
+    struct { unsigned r, g, b; } color;
     const TrainLineSegmentConfig* segments;
     unsigned segments_count;
 } TrainLineConfig;

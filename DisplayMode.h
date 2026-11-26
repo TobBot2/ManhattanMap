@@ -6,7 +6,7 @@
 #include "TrainLine.h"
 
 typedef struct SimulatedTrain_t {
-    PixelIndex pos;
+    PixelIndex curr;
     PixelIndex prev;
     float interp; // interpolation between prev and curr position.
     Color color;
@@ -29,28 +29,28 @@ typedef struct DisplayData_t {
         Color color;                        // DISPLAY_MODE_SOLID
 
         struct {                            // DISPLAY_MODE_TRAIN_LINE_COLORS
-            PixelTrainLines* pxtl;
-            TrainLine* tls;
+            const PixelTrainLines* pxtl;
+            const TrainLine* tls;
         } tl_colors;
 
         struct {                            // DISPLAY_MODE_WAVE
             Color color1;
             Color color2;
             float dir_x, dir_y;
-            float speed; // in/s
+            float speed; // in/ms
             uint64_t elapsed_ms;
         } wave;
 
         struct {                            // DISPLAY_MODE_PULSE
             Color color;
             float x, y;
-            float speed; // in/s
+            float speed; // in/ms
             uint64_t elapsed_ms;
         } pulse;
 
         struct {                            // DISPLAY_MODE_SIMULATE_TRAINS
             int count;
-            float speed; // in/s
+            float speed; // in/ms
             SimulatedTrain* trains;
         } simulate;
     };

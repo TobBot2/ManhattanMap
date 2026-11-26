@@ -7,13 +7,14 @@
 #include "pico/types.h"
 
 #include "config.h"
+#include "quickpix.h"
+
 #include "DisplayMode.h"
 #include "Map.h"
-#include "quickpix.h"
 
 // mode to see what physical pixel each handle corresponds to.
 // check stdout for current handle (chain + index) of lit up pixel
-//#define SETUP_MODE
+// #define SETUP_MODE
 
 static Quickpix quickpix;
 static Map map;
@@ -21,30 +22,32 @@ static DisplayModeIndex display_mode_index;
 
 static PixelIndex debugLight = 0;
 
-static void initialize_io(Quickpix* qpix);
+static void initialize_io();
+static void tick(int64_t dt_us);
+
 static void button_cb(uint pin, uint32_t events);
+static bool poll_button();
 static volatile bool button_pressed = false;
 
 [[noreturn]]
 int main(void) {
-    initialize_io(&quickpix);
+    initialize_io();
+    printf("Starting up...\n");
 
     map_init(&map, &quickpix);
     dsp_init_presets(&map);
 
     map_clear(&map);
 
-    printf("Starting main loop...");
+    printf("Main loop...\n");
     const int64_t target_frame_time_us = 1000000 / CONFIG.target_fps;
     while (true) {
 #ifdef SETUP_MODE
         // callback forcefully updates map already by accessing pixel handle directly
-        if (button_pressed) {
-            button_pressed = false;
-
-            px_set_color(map.pxg, debugLight, (Color){0, 0, 0, 0});
-            for (int i = 0; i < 1; i++) debugLight = (debugLight + 1) % map.pxg->count;
-            px_set_color(map.pxg, debugLight, (Color){0, 0, 255, 0});
+        if (poll_button()) {
+            px_set_color(&map.pxg, debugLight, color_from_rgb(0, 0, 0));
+            debugLight = (debugLight + 8) % map.pxg.count;
+            px_set_color(&map.pxg, debugLight, color_from_rgb(0xFF, 0xFF, 0xFF));
 
             printf("PixelIndex: %d\n", debugLight);
             quickpix_show(&quickpix);
@@ -53,16 +56,7 @@ int main(void) {
 #else
         absolute_time_t frame_start = get_absolute_time();
 
-        // MAIN LOGIC ---------------------------------------------------------------------
-
-        // handle input
-        if (button_pressed) { dsp_next_preset(&display_mode_index); }
-        // update state
-        dsp_update_map(&map, dsp_get_preset(display_mode_index), target_frame_time_us);
-        // render
-        quickpix_show(&quickpix);
-
-        // END MAIN LOGIC -----------------------------------------------------------------
+        tick(target_frame_time_us);
 
         absolute_time_t frame_end = get_absolute_time();
 
@@ -75,7 +69,7 @@ int main(void) {
     }
 }
 
-static void initialize_io(Quickpix* qpix) {
+static void initialize_io() {
     // init debug onboard LED
     gpio_init(PICO_DEFAULT_LED_PIN);
     gpio_set_dir(PICO_DEFAULT_LED_PIN, GPIO_OUT);
@@ -98,11 +92,22 @@ static void initialize_io(Quickpix* qpix) {
     gpio_set_irq_enabled_with_callback(CONFIG.button.pin, GPIO_IRQ_EDGE_FALL, true, &button_cb);
 
     // quickpix
-    quickpix_init(qpix);
+    quickpix_init(&quickpix);
     for (unsigned i = 0; i < CONFIG.chains_count; i++) {
         const ChainConfig* chain = &CONFIG.chain_configs[i];
-        quickpix_add_chain(qpix, chain->pin, chain->leds_count);
+        quickpix_add_chain(&quickpix, chain->pin, chain->leds_count);
     }
+}
+
+static void tick(int64_t dt_us) {
+    // handle input
+    if (poll_button()) {
+        dsp_next_preset(&display_mode_index);
+    }
+    // update state
+    dsp_update_map(&map, dsp_get_preset(display_mode_index), dt_us);
+    // render
+    quickpix_show(&quickpix);
 }
 
 static void button_cb(uint pin, uint32_t events) {
@@ -111,4 +116,12 @@ static void button_cb(uint pin, uint32_t events) {
     if (now - last_time < CONFIG.button.debounce_ms) return;
     last_time = now;
     button_pressed = true;
+}
+
+static bool poll_button() {
+    if (button_pressed) {
+        button_pressed = false;
+        return true;
+    }
+    return false;
 }

@@ -9,8 +9,8 @@
 // MAP LOGIC
 
 typedef struct Map_t {
-    PixelGroup* pxg;
-    PixelTrainLines* pxtl;
+    PixelGroup pxg;
+    PixelTrainLines pxtl;
     TrainLine* tls;
     TrainLineIndex tls_count;
 } Map;

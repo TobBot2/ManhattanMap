@@ -1,12 +1,11 @@
 #include "config.h"
-
-#define COLOR(red, green, blue) .r = red, .g = green, .b = blue
+#include "pico/platform/compiler.h"
 
 // ******************************************************************************
 //                                CHAIN CONFIG
 // ******************************************************************************
 
-const ChainConfig CHAINS_CONFIG[] = {
+static const ChainConfig CHAINS_CONFIG[] = {
     {
         .pin = 6,
         .leds_count = 618,
@@ -21,10 +20,10 @@ const ChainConfig CHAINS_CONFIG[] = {
 //                              PIXELSEGMENT CONFIG
 // ******************************************************************************
 
-const PixelSegmentConfig PIXEL_SEGMENTS[] = {
+static const PixelSegmentConfig PIXEL_SEGMENTS[] = {
     {
         .begin = 0, .begin_x = 0, .begin_y = 0,
-        .end = 0, .end_x = 0, .end_y = 0
+        .end = 617 + 548, .end_x = 0, .end_y = 0
     },
     // TODO x however many segments...
 };
@@ -33,20 +32,20 @@ const PixelSegmentConfig PIXEL_SEGMENTS[] = {
 //                              TRAINLINE CONFIG
 // ******************************************************************************
 
-const TrainLineSegmentConfig TRAINLINE_SEGMENTS_1[] = {
+static const TrainLineSegmentConfig TRAINLINE_SEGMENTS_1[] = {
     {
         .begin = 0,
-        .end = 0
+        .end = 617+548
     },
     // TODO all segments of the line...
 };
 
 // TODO all TRAINLINES
-const TrainLineConfig TRAINLINES_CONFIG[] = {
+static const TrainLineConfig TRAINLINE_CONFIGS[] = {
     { // [0] = 1 line
-        COLOR(0xEE, 0x35, 0x2E),
+        .color = {0xEE, 0x35, 0x2E},
         .segments = TRAINLINE_SEGMENTS_1,
-        .segments_count = sizeof(TRAINLINE_SEGMENTS_1) / sizeof(*TRAINLINE_SEGMENTS_1)
+        .segments_count = count_of(TRAINLINE_SEGMENTS_1)
     },
     // TODO x20...
 };
@@ -104,14 +103,16 @@ const Config CONFIG = {
     },
 
     .chain_configs = CHAINS_CONFIG,
-    .chains_count = sizeof(CHAINS_CONFIG) / sizeof(*CHAINS_CONFIG),
+    .chains_count = count_of(CHAINS_CONFIG),
 
     .pixel_segments = PIXEL_SEGMENTS,
-    .pixel_segments_count = sizeof(PIXEL_SEGMENTS) / sizeof(*PIXEL_SEGMENTS),
+    .pixel_segments_count = count_of(PIXEL_SEGMENTS),
 
-    .trainline_configs = TRAINLINES_CONFIG,
-    .trainlines_count = sizeof(TRAINLINES_CONFIG) / sizeof(*TRAINLINES_CONFIG),
+    .trainline_configs = TRAINLINE_CONFIGS,
+    .trainlines_count = count_of(TRAINLINE_CONFIGS),
 
-    .max_brightness = 0xef,
+    .max_brightness = .1f,
     .target_fps = 60.f
 };
+
+// static_assert(count_of(TRAINLINE_CONFIGS) < 32);

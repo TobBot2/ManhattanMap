@@ -7,8 +7,8 @@
 
 #include "DisplayMode.h"
 
-static void map_add_tl_segment(TrainLineIndex tl_idx, PixelIndex start, PixelIndex end, TrainLine* tls, const PixelTrainLines* pxtl) {
-    TrainLine* tl = &tls[tl_idx];
+static void map_add_tl_segment(const Map* map, TrainLineIndex tl_idx, PixelIndex start, PixelIndex end) {
+    TrainLine* tl = &map->tls[tl_idx];
     PixelIndex original_cnt = tl->pixels_count;
 
     if (start > end) return; // end must be after start
@@ -21,46 +21,46 @@ static void map_add_tl_segment(TrainLineIndex tl_idx, PixelIndex start, PixelInd
     // populate space
     for (PixelIndex i = 0; i < extra_space; i++) {
         tl->pixels[original_cnt + i] = start + i;
-        pxtl_associate_line(pxtl, tl->pixels[original_cnt + i], tl_idx);
+        pxtl_associate_line(&map->pxtl, tl->pixels[original_cnt + i], tl_idx);
     }
 }
 
 void map_init(Map* map, const Quickpix* quickpix) {
     // pixels
-    pxg_init(map->pxg, quickpix);
+    pxg_init(&map->pxg, quickpix);
     for (unsigned s = 0; s < CONFIG.pixel_segments_count; s++) {
         const PixelSegmentConfig* seg = &CONFIG.pixel_segments[s];
         float x = seg->begin_x;
         float y = seg->begin_y;
-        float dx = (seg->end_x - seg->begin_x) / (seg->end - seg->begin);
-        float dy = (seg->end_y - seg->begin_y) / (seg->end - seg->begin);
-        for (PixelIndex p = 0; p <= seg->end; p++) {  // inclusive with end
-            px_set_position(map->pxg, p, x, y);
+        float dx = (seg->end_x - seg->begin_x) / (seg->end - seg->begin + 1);
+        float dy = (seg->end_y - seg->begin_y) / (seg->end - seg->begin + 1);
+        for (PixelIndex p = seg->begin; p <= seg->end; p++) {  // inclusive with end
+            px_set_position(&map->pxg, p, x, y);
             x += dx;
             y += dy;
         }
     }
 
     // pixel-trainlines
-    pxtl_init(map->pxtl, map->pxg, CONFIG.trainlines_count);
+    pxtl_init(&map->pxtl, &map->pxg, CONFIG.trainlines_count);
 
     // train lines
     map->tls_count = CONFIG.trainlines_count;
     map->tls = calloc(map->tls_count, sizeof(TrainLine));
-    for (unsigned i = 0; i < CONFIG.trainlines_count; i++) {
-        const TrainLineConfig* tl_config = &CONFIG.trainline_configs[i];
-        Color color = color_from(tl_config->r, tl_config->g, tl_config->b);
-        tl_init(&map->tls[i], color);
+    for (unsigned tl_idx = 0; tl_idx < map->tls_count; tl_idx++) {
+        const TrainLineConfig* tl_config = &CONFIG.trainline_configs[tl_idx];
+        Color color = color_from_rgb(tl_config->color.r, tl_config->color.g, tl_config->color.b);
+        tl_init(&map->tls[tl_idx], color);
         const TrainLineSegmentConfig* seg_end = tl_config->segments + CONFIG.trainlines_count;
         for (const TrainLineSegmentConfig* seg = tl_config->segments; seg != seg_end; seg++) {
-            map_add_tl_segment(i, seg->begin, seg->end, map->tls, map->pxtl);
+            map_add_tl_segment(map, tl_idx, seg->begin, seg->end);
         }
     }
 }
 
 void map_clear(const Map* map) {
-    for (PixelIndex px = 0; px < map->pxg->count; px++) {
-        map->pxg->colors[px] = (Color){ 0 };
+    for (PixelIndex px = 0; px < map->pxg.count; px++) {
+        map->pxg.colors[px] = (Color){ 0 };
     }
 }
 
@@ -75,7 +75,7 @@ PixelIndex map_get_random_next_neighbor(const Map* map, PixelIndex pixel, PixelI
     unsigned n = 0;
 
     // visit only the lines this pixel belongs to (set bits in the mask)
-    for (uint32_t m = map->pxtl->tl_masks[pixel]; m; m &= m - 1) {
+    for (uint32_t m = map->pxtl.tl_masks[pixel]; m; m &= m - 1) {
         const TrainLine* tl = &map->tls[__builtin_ctz(m)]; // mask to tl_index (via ctz) to tl (via arr lookup)
 
         // linear search for pixel index in trainline

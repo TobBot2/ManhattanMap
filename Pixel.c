@@ -2,27 +2,27 @@
 
 #include <math.h>
 
-Color color_from(uint8_t r, uint8_t g, uint8_t b) {
-    return (Color){0, r, g, b};
-}
+// Color color_from(uint8_t r, uint8_t g, uint8_t b) {
+//     return (Color){0, g, r, b};
+// }
 
 Color color_mix(Color c1, Color c2, float mix) {
     // mix colors
-    Color c1_contribution = (Color) {
+    Color c1_contribution = color_from_rgb(
         c1.r * (1.f - mix),
         c1.g * (1.f - mix),
         c1.b * (1.f - mix)
-    };
-    Color c2_contribution = (Color) {
+    );
+    Color c2_contribution = color_from_rgb(
         c2.r * mix,
         c2.g * mix,
         c2.b * mix
-    };
-    return (Color) {
+    );
+    return color_from_rgb (
         c1_contribution.r + c2_contribution.r,
         c1_contribution.g + c2_contribution.g,
         c1_contribution.b + c2_contribution.b
-    };
+    );
 }
 
 // ******************************************************************************
